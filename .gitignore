@@ -7,5 +7,4 @@ models/
 *.pt
 *.pkl
 yerevan_air.html
-config.py
 predictions_log.jsonl
