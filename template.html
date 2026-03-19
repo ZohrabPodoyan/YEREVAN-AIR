@@ -19,6 +19,15 @@
   --mono:   'Space Mono', monospace;
   --sans:   'Syne', sans-serif;
 }
+
+:root.light {
+  --bg:     #f0f4f8;
+  --panel:  #ffffff;
+  --border: #d0dce8;
+  --accent: #0077aa;
+  --dim:    #7a9ab8;
+  --text:   #1a2840;
+}
 * { margin:0; padding:0; box-sizing:border-box; }
 html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:var(--sans); overflow:hidden; }
 
@@ -42,6 +51,27 @@ html, body { width:100%; height:100%; background:var(--bg); color:var(--text); f
 .logo { font-family:var(--sans); font-weight:800; font-size:18px; letter-spacing:.12em; color:#fff; }
 .logo span { color:var(--accent); }
 .sep { flex:1; }
+<button id="theme-btn" onclick="toggleTheme()" style="
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:6px; padding:5px 10px;
+  color:var(--dim); font-family:var(--mono);
+  font-size:9px; cursor:pointer;
+  transition:all .2s;
+">☀ LIGHT MODE</button>
+```
+
+---
+
+**3. Деплой на Railway** — отдельная инструкция:
+
+Сначала нужно изменить `main.py` чтобы работал как веб-сервер. Добавь `requirements.txt`:
+```
+pandas
+numpy
+requests
+joblib
+torch
+flask
 .hstat { font-family:var(--mono); font-size:11px; color:var(--dim); line-height:1.7; }
 .hstat b { color:var(--text); font-size:13px; }
 .pulse-dot {
@@ -414,6 +444,19 @@ html, body { width:100%; height:100%; background:var(--bg); color:var(--text); f
       <div class="section-title">▸ monitoring stations (openaq)</div>
       {{station_cards}}
       <div class="section-title">▸ aqi scale</div>
+
+      <button onclick="downloadCSV()" style="
+        width:100%; padding:8px; margin-top:4px;
+        background:var(--bg); border:1px solid var(--border);
+        border-radius:8px; color:var(--accent);
+        font-family:var(--mono); font-size:9px;
+        letter-spacing:.1em; cursor:pointer;
+        transition:border-color .2s;
+      " onmouseover="this.style.borderColor='var(--accent)'"
+         onmouseout="this.style.borderColor='var(--border)'">
+        ↓ EXPORT CSV
+      </button>
+
       <div class="legend-row">
         <div class="leg"><div class="leg-dot" style="background:#00e676"></div>Good</div>
         <div class="leg"><div class="leg-dot" style="background:#ffee58"></div>Moderate</div>
@@ -1066,6 +1109,39 @@ function switchTab(name) {
   if (name === 'history')    drawHistory();
   if (name === 'forecast')   initForecast();
   if (name === 'prediction') initPrediction();
+}
+
+// ── CSV EXPORT ──
+function downloadCSV() {
+  if (!SOURCES.length) return;
+
+  const rows = [
+    ['Station', 'Lat', 'Lon', 'PM2.5', 'PM10', 'NO2', 'O3', 'AQI', 'Label', 'Timestamp'],
+    ...SOURCES.map(s => [
+      s.name, s.lat, s.lon,
+      s.pm25, s.pm10, s.no2, s.o3,
+      s.aqi, s.label,
+      new Date().toISOString()
+    ])
+  ];
+
+  const csv     = rows.map(r => r.join(',')).join('\n');
+  const blob    = new Blob([csv], {type: 'text/csv'});
+  const url     = URL.createObjectURL(blob);
+  const a       = document.createElement('a');
+  a.href        = url;
+  a.download    = `yerevan_air_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── THEME TOGGLE ──
+let isDark = true;
+function toggleTheme() {
+  isDark = !isDark;
+  document.documentElement.classList.toggle('light', !isDark);
+  const btn = document.getElementById('theme-btn');
+  btn.textContent = isDark ? '☀ LIGHT MODE' : '🌙 DARK MODE';
 }
 
 </script>
