@@ -22,12 +22,10 @@ from predictor import train, predict, save_prediction_for_eval, get_prediction_v
 app = Flask(__name__)
 OUTPUT_FILE = Path("yerevan_air.html")
 
-# ── Глобальное состояние ──
 state = {"particles": [], "last_update": None, "running": False}
 
 
 def simulation_loop():
-    """Фоновый поток симуляции."""
     state["running"] = True
     init_db()
 
@@ -51,16 +49,16 @@ def simulation_loop():
             vs_reality  = get_prediction_vs_reality(get_training_data())
 
             record(df)
-            new_alerts    = check_alerts(df)
+            new_alerts      = check_alerts(df)
             forecast_frames = run_forecast(state["particles"], df, wind)
 
             d_lat, d_lon = wind_displacement(wind["wind_speed"], wind["wind_deg"], config.DT)
-            state["particles"] = step_particles(state["particles"], d_lat, d_lon)
+            state["particles"]  = step_particles(state["particles"], d_lat, d_lon)
             state["particles"] += emit_particles(df)
-            state["particles"] = trim_particles(state["particles"])
+            state["particles"]  = trim_particles(state["particles"])
 
             html = render(state["particles"], df, wind,
-                         new_alerts, forecast_frames, prediction, vs_reality)
+                          new_alerts, forecast_frames, prediction, vs_reality)
             OUTPUT_FILE.write_text(html, encoding="utf-8")
             state["last_update"] = datetime.now().isoformat()
 
@@ -87,14 +85,8 @@ def health():
 
 
 if __name__ == "__main__":
-    # Запускаем симуляцию в фоне
     thread = threading.Thread(target=simulation_loop, daemon=True)
     thread.start()
 
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-```
-
-Создай `Procfile` (без расширения):
-```
-web: python server.py
