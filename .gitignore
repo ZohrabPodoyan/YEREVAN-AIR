@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+air_data.db
+models/
+*.pt
+*.pkl
+yerevan_air.html
+config.py
+predictions_log.jsonl
