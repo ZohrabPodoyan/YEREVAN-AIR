@@ -397,6 +397,16 @@ flask
 .sat-toggle-track.on .sat-toggle-thumb { transform:translateX(14px); }
 .sat-btn-label { font-size:9px; color:var(--dim); transition:color .2s; }
 .sat-btn.active .sat-btn-label { color:var(--accent); }
+
+:root.light {
+  --bg:    #f0f4f8;
+  --panel: #ffffff;
+  --border:#d0dce8;
+  --accent:#0077aa;
+  --dim:   #7a9ab8;
+  --text:  #1a2840;
+}
+
 </style>
 </head>
 <body>
@@ -411,6 +421,12 @@ flask
     <div class="hstat">WIND<br><b>{{wind_speed}} m/s</b></div>
     <div class="hstat">STATIONS<br><b>{{station_count}}</b></div>
     <div class="sep"></div>
+    <button id="theme-btn" onclick="toggleTheme()" style="
+      background:var(--bg); border:1px solid var(--border);
+      border-radius:6px; padding:5px 10px;
+      color:var(--dim); font-family:var(--mono);
+      font-size:9px; cursor:pointer; transition:all .2s;
+    ">☀ LIGHT</button>
     <div class="hstat" style="text-align:right">
       US EPA AQI INDEX<br>
       <b style="color:{{aqi_color}}">AQI {{avg_aqi}}</b>
@@ -1143,6 +1159,8 @@ function toggleTheme() {
   const btn = document.getElementById('theme-btn');
   btn.textContent = isDark ? '☀ LIGHT MODE' : '🌙 DARK MODE';
 }
+
+
 
 </script>
 </body>
