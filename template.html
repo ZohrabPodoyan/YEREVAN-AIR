@@ -399,12 +399,29 @@ flask
 .sat-btn.active .sat-btn-label { color:var(--accent); }
 
 :root.light {
-  --bg:    #f0f4f8;
-  --panel: #ffffff;
-  --border:#d0dce8;
-  --accent:#0077aa;
-  --dim:   #7a9ab8;
-  --text:  #1a2840;
+  --bg:     #e8f0f7;
+  --panel:  #d0e4f2;
+  --border: #a8c8e8;
+  --accent: #0066cc;
+  --dim:    #4488bb;
+  --text:   #0a2240;
+}
+
+:root.light .logo { color: #0a2240; }
+:root.light .logo span { color: #0066cc; }
+:root.light #leaflet { filter: brightness(1.1) saturate(0.8); }
+:root.light .compass {
+  background: radial-gradient(circle, #c0d8f0 60%, #a8c8e8 100%);
+}
+:root.light .aqi-card {
+  background: #d8ecf8;
+}
+:root.light .dist-card {
+  background: #d8ecf8;
+}
+:root.light .source-badge,
+:root.light .map-badge {
+  background: rgba(200,225,245,.92);
 }
 
 </style>
@@ -593,6 +610,10 @@ const ALERTS      = {{alerts_json}};
 const FORECAST    = {{forecast_json}};
 const PREDICTION  = {{prediction_json}};
 const VS_REALITY  = {{vs_reality_json}};
+
+let baseTile = null;
+let isDark = true;
+
 // ── COMPASS NEEDLE ──
 document.getElementById('compass-needle').style.transform =
   `translate(-50%, -100%) rotate(${WIND_DEG}deg)`;
@@ -604,7 +625,9 @@ const map = L.map('leaflet', {
   zoomControl: false,
   attributionControl: false,
 });
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom:19 }).addTo(map);
+
+baseTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom:19 });
+baseTile.addTo(map);
 
 // satellite pane — между базовой картой (200) и heatmap overlay (400)
 map.createPane('satellitePane');
@@ -675,12 +698,13 @@ const DynamicHeatLayer = L.Layer.extend({
       const r    = Math.max(18, Math.min(120, val * 0.25));
       const norm = Math.min(val / 150, 1);
       let color;
-      if      (norm < 0.17) color = `rgba(0,230,118,${norm * 3})`;
-      else if (norm < 0.34) color = `rgba(255,238,88,${0.5 + norm})`;
-      else if (norm < 0.50) color = `rgba(255,167,38,0.65)`;
-      else if (norm < 0.67) color = `rgba(239,83,80,0.70)`;
-      else if (norm < 0.84) color = `rgba(171,71,188,0.70)`;
-      else                  color = `rgba(183,28,28,0.80)`;
+      const alpha = isDark ? 1.0 : 1.4;
+      if      (norm < 0.17) color = `rgba(0,200,80,${Math.min(1, norm * 4 * alpha)})`;
+      else if (norm < 0.34) color = `rgba(220,180,0,${Math.min(1, 0.7 * alpha)})`;
+      else if (norm < 0.50) color = `rgba(230,120,0,${Math.min(1, 0.8 * alpha)})`;
+      else if (norm < 0.67) color = `rgba(210,50,50,${Math.min(1, 0.85 * alpha)})`;
+      else if (norm < 0.84) color = `rgba(140,40,160,${Math.min(1, 0.85 * alpha)})`;
+      else                  color = `rgba(150,10,10,${Math.min(1, 0.9 * alpha)})`;
       const g = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r);
       g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.beginPath(); ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
@@ -1151,13 +1175,21 @@ function downloadCSV() {
   URL.revokeObjectURL(url);
 }
 
-// ── THEME TOGGLE ──
-let isDark = true;
+
 function toggleTheme() {
   isDark = !isDark;
   document.documentElement.classList.toggle('light', !isDark);
-  const btn = document.getElementById('theme-btn');
-  btn.textContent = isDark ? '☀ LIGHT MODE' : '🌙 DARK MODE';
+  document.getElementById('theme-btn').textContent = isDark ? '☀ LIGHT MODE' : '🌙 DARK MODE';
+
+  // меняем тайловый слой карты
+  if (baseTile) map.removeLayer(baseTile);
+  if (isDark) {
+    baseTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom:19 });
+  } else {
+    baseTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom:19 });
+  }
+  baseTile.addTo(map);
+  baseTile.bringToBack();
 }
 
 
