@@ -17,9 +17,9 @@ from database  import init_db, save_measurements, get_training_data, get_row_cou
 from predictor import train, predict, save_prediction_for_eval, get_prediction_vs_reality
 
 print("╔══════════════════════════════════════════════╗")
-print("║  YEREVAN AIR POLLUTION SIMULATION  v4.0     ║")
-print("║  Air: OpenAQ v3  ·  Wind: OWM               ║")
-print("║  AQI · History · Alerts · Forecast          ║")
+print("║  YEREVAN AIR POLLUTION SIMULATION  v4.0      ║")
+print("║  Air: OpenAQ v3  ·  Wind: OWM                ║")
+print("║  AQI · History · Alerts · Forecast           ║")
 print("╚══════════════════════════════════════════════╝\n")
 
 particles = []
