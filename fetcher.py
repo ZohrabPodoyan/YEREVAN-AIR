@@ -148,10 +148,16 @@ def fetch_air_data() -> pd.DataFrame:
                 locations.append(info)
 
     rows = []
-    for loc in locations[:10]:
+    for loc in locations[:50]:
         m = _fetch_latest(loc["id"], loc["sensor_params"])
 
         if m["pm25"] == 0.0 and m["pm10"] == 0.0:
+            print(f"  [OpenAQ] {loc['name'][:40]} — нет PM данных, пропускаем")
+            continue
+
+        if m["pm25"] > 500.0:
+            print(f"  [OpenAQ] {loc['name'][:40]} — мусорные данные PM2.5={m['pm25']:.1f}, пропускаем")
+            continue
             print(f"  [OpenAQ] {loc['name'][:40]} — нет PM данных, пропускаем")
             continue
 

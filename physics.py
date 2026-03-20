@@ -1,9 +1,21 @@
 """
 physics.py — физика рассеивания загрязнения по ветру
+С добавлением:
+  • Шум Перлина для турбулентности (кинематографичный дым)
+  • Горный рельеф: замедление и застаивание в низинах
 """
 
 import numpy as np
 import config
+
+# Пытаемся импортировать шум Перлина
+try:
+    from opensimplex import OpenSimplex
+    _perlin = OpenSimplex(seed=42)
+    _has_perlin = True
+except ImportError:
+    _has_perlin = False
+    print("⚠ opensimplex не установлен (pip install opensimplex) — турбулентность отключена")
 
 
 def wind_displacement(speed_ms: float, direction_deg: float, dt_sec: float) -> tuple:
@@ -18,18 +30,68 @@ def wind_displacement(speed_ms: float, direction_deg: float, dt_sec: float) -> t
     return float(d_lat), float(d_lon)
 
 
-def step_particles(particles: list, d_lat: float, d_lon: float) -> list:
+def get_terrain_factor(lat: float, lon: float) -> float:
+    """
+    Возвращает коэффициент застаивания загрязнения:
+    • Центр Еревана (Кентрон, Шенгавит) — низины → фактор 1.2 (живут дольше)
+    • Северо-восточные районы (Аван, Нор-Норк) — выше → фактор 0.7 (быстрее рассеиваются)
+    • Западные районы — среднее → фактор 1.0
+    """
+    # Упрощённая модель: расстояние от центра + направление
+    # Ереван: центр ~40.179°N, 44.513°E
+    d_lat = abs(lat - config.LAT_CENTER)
+    d_lon = abs(lon - config.LON_CENTER)
+    
+    # Южные и центральные районы — низины
+    if lat < config.LAT_CENTER + 0.02:
+        return 1.2
+    # Северные районы — выше
+    elif lat > config.LAT_CENTER + 0.04:
+        return 0.7
+    else:
+        return 1.0
+
+
+def get_turbulence(lat: float, lon: float, t: float) -> tuple:
+    """
+    Возвращает (d_lat_turb, d_lon_turb) — турбулентное смещение на основе шума Перлина.
+    t — время (можно использовать шаг симуляции или random seed).
+    """
+    if not _has_perlin:
+        # fallback: случайный разброс
+        return (
+            np.random.uniform(-config.DIFFUSION, config.DIFFUSION),
+            np.random.uniform(-config.DIFFUSION, config.DIFFUSION)
+        )
+    
+    # Используем opensimplex для плавного турбулентного поля
+    scale = 0.05  # частота шума
+    dx = _perlin.noise2(lat * scale + t * 0.1, lon * scale) * config.DIFFUSION * 2
+    dy = _perlin.noise2(lat * scale + t * 0.1 + 100, lon * scale) * config.DIFFUSION * 2
+    return float(dx), float(dy)
+
+
+def step_particles(particles: list, d_lat: float, d_lon: float, step_time: float = 0) -> list:
     """
     Двигает и затухает все существующие частицы на один шаг.
+    step_time — для турбулентности (можно передавать текущий timestamp)
     """
     new = []
     for p in particles:
-        new_val = p["value"] * config.DECAY
+        # Турбулентность
+        turb_lat, turb_lon = get_turbulence(p["lat"], p["lon"], step_time)
+        
+        # Горный фактор влияет на затухание
+        terrain_factor = get_terrain_factor(p["lat"], p["lon"])
+        decay = config.DECAY ** terrain_factor  # в низинах затухает медленнее
+        
+        new_val = p["value"] * decay
         if new_val < 0.5:
             continue
+        
         new.append({
-            "lat":   p["lat"]   + d_lat + np.random.uniform(-config.DIFFUSION, config.DIFFUSION),
-            "lon":   p["lon"]   + d_lon + np.random.uniform(-config.DIFFUSION, config.DIFFUSION),
+            "lat":   p["lat"]   + d_lat + turb_lat,
+            "lon":   p["lon"]   + d_lon + turb_lon,
             "value": new_val,
         })
     return new

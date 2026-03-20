@@ -104,7 +104,6 @@ def render(particles, df, wind, alerts=None, forecast_frames=None,
     history_data   = get_city_history()
     alerts         = alerts or []
     forecast_frames = forecast_frames or []
-    # компактная версия forecast для JS (убираем лишние поля heat из промежуточных)
     forecast_js = [
         {
             "step":    f["step"],
