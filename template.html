@@ -20,14 +20,6 @@
   --sans:   'Syne', sans-serif;
 }
 
-:root.light {
-  --bg:     #f0f4f8;
-  --panel:  #ffffff;
-  --border: #d0dce8;
-  --accent: #0077aa;
-  --dim:    #7a9ab8;
-  --text:   #1a2840;
-}
 * { margin:0; padding:0; box-sizing:border-box; }
 html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:var(--sans); overflow:hidden; }
 
@@ -51,27 +43,6 @@ html, body { width:100%; height:100%; background:var(--bg); color:var(--text); f
 .logo { font-family:var(--sans); font-weight:800; font-size:18px; letter-spacing:.12em; color:#fff; }
 .logo span { color:var(--accent); }
 .sep { flex:1; }
-<button id="theme-btn" onclick="toggleTheme()" style="
-  background:var(--bg); border:1px solid var(--border);
-  border-radius:6px; padding:5px 10px;
-  color:var(--dim); font-family:var(--mono);
-  font-size:9px; cursor:pointer;
-  transition:all .2s;
-">☀ LIGHT MODE</button>
-```
-
----
-
-**3. Деплой на Railway** — отдельная инструкция:
-
-Сначала нужно изменить `main.py` чтобы работал как веб-сервер. Добавь `requirements.txt`:
-```
-pandas
-numpy
-requests
-joblib
-torch
-flask
 .hstat { font-family:var(--mono); font-size:11px; color:var(--dim); line-height:1.7; }
 .hstat b { color:var(--text); font-size:13px; }
 .pulse-dot {
