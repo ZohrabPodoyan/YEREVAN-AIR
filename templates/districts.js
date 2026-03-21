@@ -1,50 +1,71 @@
 <script>
 
+function pointInPolygon(point, polygon) {
+    const [x, y] = point;
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const [xi, yi] = polygon[i];
+        const [xj, yj] = polygon[j];
+        const intersect = ((yi > y) !== (yj > y)) &&
+            (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
+
 function getDistrictAQI(districtName) {
     if (typeof SOURCES === 'undefined' || !SOURCES || SOURCES.length === 0) {
         return { aqi: 0, color: "#888888", label: "Нет данных", pm25: 0 };
     }
-    const mapping = {
-        "Арабкир":          ["Arabkir", "Urartu", "Aytsemnik"],
-        "Кентрон":          ["Kentron", "Yerevan", "Isakov", "Dro"],
-        "Шенгавит":         ["Shengavit", "Nzhdeh", "Arshakunyats"],
-        "Давташен":         ["Davtashen"],
-        "Малатия-Себастия": ["Malatia", "Sebastia"],
-        "Нор-Норк":         ["Nor Nork", "Ulnetsi"],
-        "Эребуни":          ["Erebuni", "Artashat", "Nor Aresh"],
-        "Канакер-Зейтун":   ["Kanaker", "Zeytun"],
-        "Аван":             ["Avan"],
-        "Ачапняк":          ["Achapnyak", "Gyulbenkyan"],
-        "Норк-Мараш":       ["Nork", "Marashen"],
-        "Нубарашен":        ["Nubarashen"],
-    };
-    
-    const keywords = mapping[districtName] || [];
-    let bestStation = null;
-    
-    for (const keyword of keywords) {
-        const station = SOURCES.find(s => s.name.includes(keyword));
-        if (station) {
-            bestStation = station;
-            break;
-        }
+
+    // Найти полигон района
+    const feature = districtsLayer?.getLayers?.()?.find?.(
+        l => l.feature?.properties?.name === districtName
+    );
+
+    let stations = [];
+
+    if (feature) {
+        const coords = feature.feature.geometry.coordinates[0];
+        // Найти все станции внутри полигона
+        stations = SOURCES.filter(s =>
+            pointInPolygon([s.lon, s.lat], coords)
+        );
     }
-    
-    if (bestStation) {
-        return {
-            aqi: bestStation.aqi,
-            color: bestStation.color,
-            label: bestStation.label,
-            pm25: bestStation.pm25
-        };
+
+    // Если нет станций внутри — берём 3 ближайшие
+    if (stations.length === 0) {
+        const center = SOURCES.reduce((acc, s) => {
+            // Найти центр района из координат
+            return acc;
+        }, null);
+
+        // Fallback: ближайшие по расстоянию
+        const withDist = SOURCES.map(s => {
+            // Примерный центр района из feature
+            if (!feature) return { ...s, dist: 999 };
+            const coords = feature.feature.geometry.coordinates[0];
+            const cx = coords.reduce((a, c) => a + c[0], 0) / coords.length;
+            const cy = coords.reduce((a, c) => a + c[1], 0) / coords.length;
+            const dist = Math.sqrt((s.lon - cx) ** 2 + (s.lat - cy) ** 2);
+            return { ...s, dist };
+        });
+        stations = withDist.sort((a, b) => a.dist - b.dist).slice(0, 3);
     }
-    
-    return {
-        aqi: SOURCES[0]?.aqi || 0,
-        color: SOURCES[0]?.color || "#888888",
-        label: SOURCES[0]?.label || "Нет данных",
-        pm25: SOURCES[0]?.pm25 || 0
-    };
+
+    // Среднее по станциям района
+    const avgAqi  = Math.round(stations.reduce((a, s) => a + s.aqi, 0) / stations.length);
+    const avgPm25 = (stations.reduce((a, s) => a + parseFloat(s.pm25), 0) / stations.length).toFixed(1);
+
+    let color, label;
+    if      (avgAqi <=  50) { color = "#00e676"; label = "Good"; }
+    else if (avgAqi <= 100) { color = "#ffee58"; label = "Moderate"; }
+    else if (avgAqi <= 150) { color = "#ffa726"; label = "Unhealthy for Some"; }
+    else if (avgAqi <= 200) { color = "#ef5350"; label = "Unhealthy"; }
+    else if (avgAqi <= 300) { color = "#ab47bc"; label = "Very Unhealthy"; }
+    else                    { color = "#b71c1c"; label = "Hazardous"; }
+
+    return { aqi: avgAqi, color, label, pm25: avgPm25 };
 }
 
 function renderDistrictsLayer(features) {
