@@ -19,8 +19,8 @@ function getDistrictAQI(districtName) {
     }
 
     // Найти полигон района
-    const feature = districtsLayer?.getLayers?.()?.find?.(
-        l => l.feature?.properties?.name === districtName
+    const layers = districtsLayer ? districtsLayer.getLayers() : [];
+    const feature = layers.find(l => l.feature?.properties?.name === districtName);
     );
 
     let stations = [];
@@ -88,6 +88,7 @@ function renderDistrictsLayer(features) {
       layer.on('mouseover', tip);
     }
   }).addTo(map);
+  setTimeout(() => refreshDistrictColors(), 100);
 }
 
 function loadDistricts() {
