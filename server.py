@@ -74,6 +74,9 @@ def index():
         return send_file(OUTPUT_FILE)
     return "<h1>Initializing... refresh in 30 seconds</h1>", 503
 
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
 
 @app.route("/health")
 def health():
