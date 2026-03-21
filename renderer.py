@@ -1,18 +1,22 @@
 """
-renderer.py — читает template.html и подставляет данные
+renderer.py — Jinja2 шаблонизатор
 """
 
 import json
-import os
 from datetime import datetime
 from pathlib import Path
+from jinja2 import Environment, FileSystemLoader
 
 from aqi import pm25_to_aqi, beaufort_scale
 import config
 from history import get_city_history
 
-# Путь к шаблону рядом с этим файлом
-TEMPLATE_PATH = Path(__file__).parent / "template.html"
+TEMPLATE_DIR = Path(__file__).parent / "templates"
+
+env = Environment(
+    loader=FileSystemLoader(TEMPLATE_DIR),
+    autoescape=False,
+)
 
 
 def _station_cards(df) -> str:
@@ -40,7 +44,6 @@ def _pollutant_bars(df) -> str:
     ]
     html = ""
     for name, val, maxv, color in pollutants:
-        # пропускаем если все станции вернули 0
         if val == 0.0:
             continue
         pct = min(100, val / maxv * 100) if maxv else 0
@@ -54,6 +57,7 @@ def _pollutant_bars(df) -> str:
             f'</div>'
         )
     return html
+
 
 def _ticker_items(df) -> str:
     html = ""
@@ -92,7 +96,6 @@ def _sources_json(df) -> str:
 
 def render(particles, df, wind, alerts=None, forecast_frames=None,
            prediction=None, vs_reality=None) -> str:
-    template = TEMPLATE_PATH.read_text(encoding="utf-8")
 
     avg_pm25 = df["pm25"].mean()
     avg_pm10 = df["pm10"].mean()
@@ -100,10 +103,12 @@ def render(particles, df, wind, alerts=None, forecast_frames=None,
     gauge_pct = min(99, avg_aqi / 500 * 100)
 
     heat_data = [[p["lat"], p["lon"], p["value"]] for p in particles]
-
-    history_data   = get_city_history()
-    alerts         = alerts or []
+    history_data = get_city_history()
+    alerts = alerts or []
     forecast_frames = forecast_frames or []
+    prediction = prediction or []
+    vs_reality = vs_reality or []
+
     forecast_js = [
         {
             "step":    f["step"],
@@ -116,41 +121,35 @@ def render(particles, df, wind, alerts=None, forecast_frames=None,
         for f in forecast_frames
     ]
 
-    prediction = prediction or []
-    vs_reality = vs_reality or []
+    template = env.get_template("base.html")
 
-    replacements = {
-        "{{history_json}}":   json.dumps(history_data),
-        "{{alerts_json}}":    json.dumps(alerts),
-        "{{forecast_json}}":  json.dumps(forecast_js),
-        "{{timestamp}}":      datetime.now().strftime("%H:%M:%S  %d.%m.%Y"),
-        "{{particle_count}}": str(len(particles)),
-        "{{station_count}}":  str(len(df)),
-        "{{wind_speed}}":     f"{wind['wind_speed']:.1f}",
-        "{{wind_speed_raw}}": str(round(wind["wind_speed"], 2)),
-        "{{wind_deg}}":       f"{wind['wind_deg']:.0f}",
-        "{{wind_deg_raw}}":   str(round(wind["wind_deg"], 1)),
-        "{{beaufort}}":       str(beaufort_scale(wind["wind_speed"])),
-        "{{avg_aqi}}":        str(avg_aqi),
-        "{{avg_label}}":      avg_label,
-        "{{aqi_color}}":      avg_color,
-        "{{avg_pm25}}":       f"{avg_pm25:.1f}",
-        "{{avg_pm10}}":       f"{avg_pm10:.1f}",
-        "{{avg_temp}}":       f"{wind['temp']:.1f}",
-        "{{avg_hum}}":        f"{wind['humidity']:.0f}",
-        "{{gauge_pct}}":      f"{gauge_pct:.1f}",
-        "{{lat_center}}":     str(config.LAT_CENTER),
-        "{{lon_center}}":     str(config.LON_CENTER),
-        "{{station_cards}}":  _station_cards(df),
-        "{{pollutant_bars}}": _pollutant_bars(df),
-        "{{ticker_items}}":   _ticker_items(df),
-        "{{heat_json}}":      json.dumps(heat_data),
-        "{{sources_json}}":   _sources_json(df),
-        "{{prediction_json}}": json.dumps(prediction),
-        "{{vs_reality_json}}": json.dumps(vs_reality),
-    }
-
-    for placeholder, value in replacements.items():
-        template = template.replace(placeholder, value)
-
-    return template
+    return template.render(
+        timestamp        = datetime.now().strftime("%H:%M:%S  %d.%m.%Y"),
+        particle_count   = len(particles),
+        station_count    = len(df),
+        wind_speed       = f"{wind['wind_speed']:.1f}",
+        wind_speed_raw   = round(wind["wind_speed"], 2),
+        wind_deg         = f"{wind['wind_deg']:.0f}",
+        wind_deg_raw     = round(wind["wind_deg"], 1),
+        beaufort         = beaufort_scale(wind["wind_speed"]),
+        avg_aqi          = avg_aqi,
+        avg_label        = avg_label,
+        aqi_color        = avg_color,
+        avg_pm25         = f"{avg_pm25:.1f}",
+        avg_pm10         = f"{avg_pm10:.1f}",
+        avg_temp         = f"{wind['temp']:.1f}",
+        avg_hum          = f"{wind['humidity']:.0f}",
+        gauge_pct        = f"{gauge_pct:.1f}",
+        lat_center       = config.LAT_CENTER,
+        lon_center       = config.LON_CENTER,
+        station_cards    = _station_cards(df),
+        pollutant_bars   = _pollutant_bars(df),
+        ticker_items     = _ticker_items(df),
+        heat_json        = json.dumps(heat_data),
+        sources_json     = _sources_json(df),
+        history_json     = json.dumps(history_data),
+        alerts_json      = json.dumps(alerts),
+        forecast_json    = json.dumps(forecast_js),
+        prediction_json  = json.dumps(prediction),
+        vs_reality_json  = json.dumps(vs_reality),
+    )

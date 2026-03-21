@@ -21,7 +21,7 @@ MODEL_DIR = Path(__file__).parent / "models"
 MODEL_DIR.mkdir(exist_ok=True)
 
 SEQ_LEN  = 24   # длина входной последовательности (24 шага = 2 часа)
-MIN_ROWS = 200  # минимум записей для первого обучения
+MIN_ROWS = 100  # минимум записей для первого обучения
 
 HORIZONS = {
     "1h":  12,
@@ -37,6 +37,7 @@ FEATURE_COLS = [
     "temp_norm", "humidity_norm",
     "hour_sin", "hour_cos",
     "dow_sin", "dow_cos",
+    "month_sin", "month_cos",
 ]
 
 
@@ -96,7 +97,9 @@ def _build_features(df_raw: pd.DataFrame) -> pd.DataFrame:
     agg["hour_cos"] = np.cos(2 * np.pi * agg["hour"] / 24)
     agg["dow_sin"]  = np.sin(2 * np.pi * agg["day_of_week"] / 7)
     agg["dow_cos"]  = np.cos(2 * np.pi * agg["day_of_week"] / 7)
-
+    # Сезонность — месяц
+    agg["month_sin"] = np.sin(2 * np.pi * agg["month"] / 12)
+    agg["month_cos"] = np.cos(2 * np.pi * agg["month"] / 12)
     return agg.reset_index(drop=True)
 
 
@@ -232,7 +235,7 @@ def train(df_raw: pd.DataFrame):
     trained = 0
     for name, steps in HORIZONS.items():
         X, y = _make_sequences(features, steps)
-        if len(X) < 20:
+        if len(X) < 10:
             continue
 
         print(f"  [LSTM] Обучаю модель {name} ({len(X)} примеров)...")
