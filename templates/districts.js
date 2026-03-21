@@ -21,7 +21,7 @@ function getDistrictAQI(districtName) {
     // Найти полигон района
     const layers = districtsLayer ? districtsLayer.getLayers() : [];
     const feature = layers.find(l => l.feature?.properties?.name === districtName);
-    );
+    
 
     let stations = [];
 
