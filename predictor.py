@@ -37,7 +37,6 @@ FEATURE_COLS = [
     "temp_norm", "humidity_norm",
     "hour_sin", "hour_cos",
     "dow_sin", "dow_cos",
-    "month_sin", "month_cos",
 ]
 
 
@@ -97,9 +96,6 @@ def _build_features(df_raw: pd.DataFrame) -> pd.DataFrame:
     agg["hour_cos"] = np.cos(2 * np.pi * agg["hour"] / 24)
     agg["dow_sin"]  = np.sin(2 * np.pi * agg["day_of_week"] / 7)
     agg["dow_cos"]  = np.cos(2 * np.pi * agg["day_of_week"] / 7)
-    # Сезонность — месяц
-    agg["month_sin"] = np.sin(2 * np.pi * agg["month"] / 12)
-    agg["month_cos"] = np.cos(2 * np.pi * agg["month"] / 12)
     return agg.reset_index(drop=True)
 
 
