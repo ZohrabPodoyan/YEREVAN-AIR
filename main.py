@@ -15,6 +15,7 @@ from alerts   import check_alerts
 from forecast import run_forecast
 from database  import init_db, save_measurements, get_training_data, get_row_count
 from predictor import train, predict, save_prediction_for_eval, get_prediction_vs_reality
+from correlation import get_correlation_data
 
 print("╔══════════════════════════════════════════════╗")
 print("║  YEREVAN AIR POLLUTION SIMULATION  v4.0      ║")
@@ -73,7 +74,8 @@ while True:
     particles   += emit_particles(df)
     particles    = trim_particles(particles)
 
-    html = render(particles, df, wind, new_alerts, forecast_frames, prediction, vs_reality)
+    correlation = get_correlation_data()
+    html = render(particles, df, wind, new_alerts, forecast_frames, prediction, vs_reality, correlation)
     with open(config.OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(html)
 

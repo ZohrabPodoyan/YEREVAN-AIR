@@ -637,7 +637,7 @@ html, body { width:100%; height:100%; background:var(--bg); color:var(--text); f
       <button class="tab-btn" onclick="switchTab('forecast')">⟳ FORECAST</button>
       <button class="tab-btn" onclick="switchTab('history')">↗ HISTORY</button>
       <button class="tab-btn" onclick="switchTab('prediction')">🔮 PREDICT</button>
-    </div>
+      <button class="tab-btn" onclick="switchTab('correlation')">📊 STATS</button></div>
 
     <!-- TAB: LIVE -->
     <div class="tab-panel active" id="tab-live">
@@ -706,6 +706,15 @@ html, body { width:100%; height:100%; background:var(--bg); color:var(--text); f
   <canvas id="vs-reality-chart" style="width:100%;height:90px;display:block"></canvas>
   <div class="section-title" style="margin-top:8px">▸ model status</div>
   <div id="pred-info" style="font-family:var(--mono);font-size:9px;color:var(--dim);line-height:2"></div>
+</div>
+<!-- TAB: CORRELATION -->
+<div class="tab-panel" id="tab-correlation">
+  <div class="section-title">▸ avg pm2.5 by hour</div>
+  <canvas id="hourly-chart" style="width:100%;height:100px;display:block"></canvas>
+  <div class="section-title" style="margin-top:8px">▸ avg pm2.5 by day</div>
+  <canvas id="daily-chart" style="width:100%;height:80px;display:block"></canvas>
+  <div class="section-title" style="margin-top:8px">▸ insights</div>
+  <div id="corr-insights" style="font-family:var(--mono);font-size:9px;color:var(--dim);line-height:2"></div>
 </div>
   </aside>
   <div id="alert-container"></div>
@@ -793,6 +802,7 @@ const ALERTS      = {{ alerts_json | safe }};
 const FORECAST    = {{ forecast_json | safe }};
 const PREDICTION  = {{ prediction_json | safe }};
 const VS_REALITY  = {{ vs_reality_json | safe }};
+const CORRELATION = {{ correlation_json | safe }};
 
 let baseTile = null;
 let isDark = true;
@@ -956,6 +966,7 @@ function switchTab(name) {
   if (name === 'history')    drawHistory();
   if (name === 'forecast')   initForecast();
   if (name === 'prediction') initPrediction();
+  if (name === 'correlation') initCorrelation();
 }
 
 // ── FORECAST ──
@@ -1149,13 +1160,8 @@ function toggleSatellite() {
         `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Aqua_Aerosol/default/${date}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`,
         { ...opts, opacity: 0.4 }
     );
-    const viirs = L.tileLayer(
-        `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_Aerosol_Optical_Depth/default/${date}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`,
-        { ...opts, opacity: 0.35 }
-    );
-
-    // Группируем все три в один объект
-    satelliteLayer = L.layerGroup([terra, aqua, viirs]);
+  
+    satelliteLayer = L.layerGroup([terra, aqua ]);
 }
 
   satelliteVisible = !satelliteVisible;
@@ -1377,6 +1383,93 @@ function downloadCSV() {
   a.download = `yerevan_air_${new Date().toISOString().slice(0,19)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+function initCorrelation() {
+  if (!CORRELATION || !CORRELATION.hourly) return;
+
+  // Часовой график
+  const hCanvas = document.getElementById('hourly-chart');
+  if (hCanvas && CORRELATION.hourly.length > 0) {
+    const ctx = hCanvas.getContext('2d');
+    const W = hCanvas.offsetWidth || 260, H = 100;
+    hCanvas.width = W; hCanvas.height = H;
+    ctx.clearRect(0, 0, W, H);
+
+    const data  = CORRELATION.hourly;
+    const maxV  = Math.max(...data.map(d => d.pm25), 1);
+    const barW  = W / 24;
+
+    data.forEach(d => {
+      const x   = d.hour * barW;
+      const h   = (d.pm25 / maxV) * (H - 20);
+      const norm = d.pm25 / maxV;
+      let color;
+      if      (norm < 0.25) color = '#00e676';
+      else if (norm < 0.50) color = '#ffee58';
+      else if (norm < 0.75) color = '#ffa726';
+      else                  color = '#ef5350';
+
+      ctx.fillStyle = color;
+      ctx.fillRect(x + 1, H - h - 16, barW - 2, h);
+
+      // Подпись часа
+      if (d.hour % 6 === 0) {
+        ctx.fillStyle = '#3a5068';
+        ctx.font = '8px Space Mono,monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(d.hour + 'h', x + barW/2, H - 2);
+      }
+    });
+  }
+
+  // Дневной график
+  const dCanvas = document.getElementById('daily-chart');
+  if (dCanvas && CORRELATION.daily.length > 0) {
+    const ctx = dCanvas.getContext('2d');
+    const W = dCanvas.offsetWidth || 260, H = 80;
+    dCanvas.width = W; dCanvas.height = H;
+    ctx.clearRect(0, 0, W, H);
+
+    const data = CORRELATION.daily;
+    const maxV = Math.max(...data.map(d => d.pm25), 1);
+    const barW = W / 7;
+
+    data.forEach(d => {
+      const x    = d.day * barW;
+      const h    = (d.pm25 / maxV) * (H - 20);
+      const norm = d.pm25 / maxV;
+      let color;
+      if      (norm < 0.25) color = '#00e676';
+      else if (norm < 0.50) color = '#ffee58';
+      else if (norm < 0.75) color = '#ffa726';
+      else                  color = '#ef5350';
+
+      ctx.fillStyle = color;
+      ctx.fillRect(x + 2, H - h - 16, barW - 4, h);
+
+      ctx.fillStyle = '#3a5068';
+      ctx.font = '8px Space Mono,monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(d.name, x + barW/2, H - 2);
+    });
+  }
+
+  // Инсайты
+  const el = document.getElementById('corr-insights');
+  if (el && CORRELATION.worst_hour) {
+    const wh = CORRELATION.worst_hour;
+    const bh = CORRELATION.best_hour;
+    const wd = CORRELATION.worst_day;
+    const bd = CORRELATION.best_day;
+    el.innerHTML = `
+      ГРЯЗНЕЕ ВСЕГО &nbsp;<b style="color:#ffa726">${wh.hour}:00</b> — PM2.5 ${wh.pm25} μg/m³<br>
+      ЧИЩЕ ВСЕГО &nbsp;&nbsp;&nbsp;<b style="color:#00e676">${bh.hour}:00</b> — PM2.5 ${bh.pm25} μg/m³<br>
+      ХУДШИЙ ДЕНЬ &nbsp;&nbsp;<b style="color:#ffa726">${wd.name}</b> — PM2.5 ${wd.pm25} μg/m³<br>
+      ЛУЧШИЙ ДЕНЬ &nbsp;&nbsp;<b style="color:#00e676">${bd.name}</b> — PM2.5 ${bd.pm25} μg/m³
+    `;
+  } else {
+    el.innerHTML = 'Накапливаем данные...';
+  }
 }
 </script>
 

@@ -18,6 +18,7 @@ from alerts    import check_alerts
 from forecast  import run_forecast
 from database  import init_db, save_measurements, get_training_data, get_row_count
 from predictor import train, predict, save_prediction_for_eval, get_prediction_vs_reality
+from correlation import get_correlation_data
 
 app = Flask(__name__)
 OUTPUT_FILE = Path("yerevan_air.html")
@@ -56,9 +57,8 @@ def simulation_loop():
             state["particles"]  = step_particles(state["particles"], d_lat, d_lon)
             state["particles"] += emit_particles(df)
             state["particles"]  = trim_particles(state["particles"])
-
-            html = render(state["particles"], df, wind,
-                          new_alerts, forecast_frames, prediction, vs_reality)
+            correlation = get_correlation_data()
+            html = render(particles, df, wind, new_alerts, forecast_frames, prediction, vs_reality, correlation)
             OUTPUT_FILE.write_text(html, encoding="utf-8")
             state["last_update"] = datetime.now().isoformat()
 

@@ -95,7 +95,7 @@ def _sources_json(df) -> str:
 
 
 def render(particles, df, wind, alerts=None, forecast_frames=None,
-           prediction=None, vs_reality=None) -> str:
+           prediction=None, vs_reality=None, correlation=None) -> str:
 
     avg_pm25 = df["pm25"].mean()
     avg_pm10 = df["pm10"].mean()
