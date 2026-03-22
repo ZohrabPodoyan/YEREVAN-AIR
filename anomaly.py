@@ -12,6 +12,8 @@ DB_PATH = Path(__file__).parent / "air_data.db"
 
 def get_recent_avg(minutes: int = 30) -> float:
     """Средний PM2.5 за последние N минут."""
+    from database import init_db
+    init_db()
     since = (datetime.now() - timedelta(minutes=minutes)).isoformat()
     with sqlite3.connect(DB_PATH) as conn:
         row = conn.execute("""
@@ -23,6 +25,8 @@ def get_recent_avg(minutes: int = 30) -> float:
 
 def get_baseline_avg(hours: int = 24) -> float:
     """Базовый средний PM2.5 за последние N часов."""
+    from database import init_db
+    init_db()
     since = (datetime.now() - timedelta(hours=hours)).isoformat()
     until = (datetime.now() - timedelta(minutes=30)).isoformat()
     with sqlite3.connect(DB_PATH) as conn:

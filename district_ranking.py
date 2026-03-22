@@ -25,6 +25,8 @@ DISTRICT_STATIONS = {
 
 def get_district_ranking() -> list[dict]:
     """Рейтинг районов по среднему PM2.5 за последние 24 часа."""
+    from database import init_db
+    init_db()
     since = (datetime.now() - timedelta(hours=24)).isoformat()
 
     with sqlite3.connect(DB_PATH) as conn:

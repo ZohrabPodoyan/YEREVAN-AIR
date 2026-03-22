@@ -4,6 +4,7 @@ correlation.py — корреляция AQI с временем суток и д
 import sqlite3
 from pathlib import Path
 
+
 DB_PATH = Path(__file__).parent / "air_data.db"
 
 DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
@@ -11,6 +12,9 @@ DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 
 def get_hourly_avg() -> list[dict]:
     """Средний PM2.5 по часам (0-23)."""
+
+    from database import init_db
+    init_db()
     with sqlite3.connect(DB_PATH) as conn:
         rows = conn.execute("""
             SELECT hour, AVG(pm25) as avg_pm25, COUNT(*) as cnt
@@ -28,6 +32,8 @@ def get_hourly_avg() -> list[dict]:
 
 def get_daily_avg() -> list[dict]:
     """Средний PM2.5 по дням недели (0=пн, 6=вс)."""
+    from database import init_db
+    init_db()
     with sqlite3.connect(DB_PATH) as conn:
         rows = conn.execute("""
             SELECT day_of_week, AVG(pm25) as avg_pm25, COUNT(*) as cnt
