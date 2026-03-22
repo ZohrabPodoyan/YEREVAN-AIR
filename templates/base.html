@@ -1131,19 +1131,32 @@ let satelliteVisible = false;
 
 function toggleSatellite() {
   if (!satelliteLayer) {
-    satelliteLayer = L.tileLayer(
-      `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_Aerosol/default/${gibsDate()}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`,
-      {
-        opacity:       0.65,
-        maxZoom:       19,
+    const date = gibsDate();
+    const opts = {
+        opacity: 0.45,
+        maxZoom: 19,
         maxNativeZoom: 6,
-        tileSize:      256,
-        pane:          'satellitePane',
-        attribution:   'NASA GIBS · MODIS Terra Aerosol',
-        errorTileUrl:  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-      }
+        tileSize: 256,
+        pane: 'satellitePane',
+        errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+    };
+
+    const terra = L.tileLayer(
+        `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_Aerosol/default/${date}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`,
+        { ...opts, opacity: 0.4 }
     );
-  }
+    const aqua = L.tileLayer(
+        `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Aqua_Aerosol/default/${date}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`,
+        { ...opts, opacity: 0.4 }
+    );
+    const viirs = L.tileLayer(
+        `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_Aerosol_Optical_Depth/default/${date}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`,
+        { ...opts, opacity: 0.35 }
+    );
+
+    // Группируем все три в один объект
+    satelliteLayer = L.layerGroup([terra, aqua, viirs]);
+}
 
   satelliteVisible = !satelliteVisible;
   const btn   = document.getElementById('sat-btn');
