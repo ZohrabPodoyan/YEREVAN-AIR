@@ -9,12 +9,12 @@ database.py — сбор исторических данных в SQLite для 
 """
 
 import sqlite3
+import os
 from datetime import datetime
 from pathlib import Path
 
-import os
+
 DB_PATH = Path(os.environ.get("DB_PATH", Path(__file__).parent / "air_data.db"))
-DB_PATH=/data/air_data.db
 
 
 def init_db():
