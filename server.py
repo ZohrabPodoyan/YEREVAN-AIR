@@ -5,11 +5,11 @@ server.py — Flask сервер для деплоя.
 import threading
 import time
 import os
+import traceback
+import config
 from flask import Flask, send_file, jsonify
 from datetime import datetime
 from pathlib import Path
-
-import config
 from fetcher   import fetch_air_data, fetch_wind_data
 from physics   import wind_displacement, step_particles, emit_particles, trim_particles
 from renderer  import render
@@ -44,6 +44,7 @@ def simulation_loop():
             state["last_update"] = datetime.now().isoformat()
         except Exception as ex:
             print(f"[ERROR] {ex}")
+            traceback.print_exc()
         time.sleep(config.DT)
 
 @app.route("/")
