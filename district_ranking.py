@@ -4,8 +4,7 @@ district_ranking.py — рейтинг районов по AQI за послед
 import sqlite3
 from pathlib import Path
 from datetime import datetime, timedelta
-
-DB_PATH = Path(__file__).parent / "air_data.db"
+from database import DB_PATH
 
 DISTRICT_STATIONS = {
     "Арабкир":          ["Arabkir", "Urartu", "Aytsemnik"],

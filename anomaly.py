@@ -6,8 +6,7 @@ import sqlite3
 import numpy as np
 from pathlib import Path
 from datetime import datetime, timedelta
-
-DB_PATH = Path(__file__).parent / "air_data.db"
+from database import DB_PATH
 
 
 def get_recent_avg(minutes: int = 30) -> float:

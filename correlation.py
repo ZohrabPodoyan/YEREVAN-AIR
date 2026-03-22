@@ -3,9 +3,7 @@ correlation.py — корреляция AQI с временем суток и д
 """
 import sqlite3
 from pathlib import Path
-
-
-DB_PATH = Path(__file__).parent / "air_data.db"
+from database import DB_PATH
 
 DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 
