@@ -16,6 +16,9 @@ from forecast import run_forecast
 from database  import init_db, save_measurements, get_training_data, get_row_count
 from predictor import train, predict, save_prediction_for_eval, get_prediction_vs_reality
 from correlation import get_correlation_data
+from district_ranking import get_district_ranking
+from weather_forecast import get_weather_forecast
+from anomaly import detect_anomalies
 
 print("╔══════════════════════════════════════════════╗")
 print("║  YEREVAN AIR POLLUTION SIMULATION  v4.0      ║")
@@ -74,8 +77,12 @@ while True:
     particles   += emit_particles(df)
     particles    = trim_particles(particles)
 
-    correlation = get_correlation_data()
-    html = render(particles, df, wind, new_alerts, forecast_frames, prediction, vs_reality, correlation)
+    correlation      = get_correlation_data()
+    ranking          = get_district_ranking()
+    weather_forecast = get_weather_forecast()
+    anomalies        = detect_anomalies(df, wind)
+    html = render(particles, df, wind, new_alerts, forecast_frames, prediction, vs_reality, correlation, ranking, weather_forecast, anomalies)
+
     with open(config.OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(html)
 

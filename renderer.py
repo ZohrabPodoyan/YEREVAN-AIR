@@ -95,8 +95,8 @@ def _sources_json(df) -> str:
 
 
 def render(particles, df, wind, alerts=None, forecast_frames=None,
-           prediction=None, vs_reality=None, correlation=None) -> str:
-
+           prediction=None, vs_reality=None, correlation=None,
+           ranking=None, weather_forecast=None, anomalies=None) -> str:    
     avg_pm25 = df["pm25"].mean()
     avg_pm10 = df["pm10"].mean()
     avg_aqi, avg_label, avg_color = pm25_to_aqi(avg_pm25)
@@ -151,5 +151,9 @@ def render(particles, df, wind, alerts=None, forecast_frames=None,
         alerts_json      = json.dumps(alerts),
         forecast_json    = json.dumps(forecast_js),
         prediction_json  = json.dumps(prediction),
-        vs_reality_json  = json.dumps(vs_reality),
+        vs_reality_json   = json.dumps(vs_reality),
+        correlation_json  = json.dumps(correlation or {}),
+        ranking_json      = json.dumps(ranking or []),
+        weather_forecast_json = json.dumps(weather_forecast or []),
+        anomalies_json        = json.dumps(anomalies or []),
     )
