@@ -1001,6 +1001,7 @@ function switchTab(name) {
   if (name === 'correlation') initCorrelation();
   if (name === 'weather') initWeather();
   if (name === 'anomaly') initAnomaly();
+  if (name === 'ranking') initRanking();
 }
 
 // ── FORECAST ──
@@ -1508,7 +1509,8 @@ function initCorrelation() {
 
 function initRanking() {
   const el = document.getElementById('ranking-list');
-  if (!el || el.children.length > 0) return;
+  if (!el) return;
+  el.innerHTML = '';
 
   if (!RANKING.length) {
     el.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--dim)">Накапливаем данные...</div>';
@@ -1535,7 +1537,8 @@ function initRanking() {
 }
 function initWeather() {
   const el = document.getElementById('weather-list');
-  if (!el || el.children.length > 0) return;
+  if (!el) return;
+  el.innerHTML = '';
 
   if (!WEATHER_FORECAST.length) {
     el.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--dim)">Нет данных</div>';
@@ -1577,7 +1580,8 @@ function initWeather() {
 
 function initAnomaly() {
   const el = document.getElementById('anomaly-list');
-  if (!el || el.children.length > 0) return;
+  if (!el) return;
+  el.innerHTML = '';
 
   if (!ANOMALIES.length) {
     el.innerHTML = `

@@ -22,6 +22,7 @@ from correlation import get_correlation_data
 from district_ranking import get_district_ranking
 from weather_forecast import get_weather_forecast
 from anomaly import detect_anomalies
+from core import run_cycle
 
 app = Flask(__name__)
 OUTPUT_FILE = Path("yerevan_air.html")
@@ -32,48 +33,18 @@ state = {"particles": [], "last_update": None, "running": False}
 def simulation_loop():
     state["running"] = True
     init_db()
-
     existing = get_row_count()
     if existing >= 200:
         train(get_training_data())
 
     while True:
         try:
-            df   = fetch_air_data()
-            wind = fetch_wind_data()
-
-            save_measurements(df, wind)
-            row_count = get_row_count()
-
-            if row_count % 100 == 0 and row_count > 0:
-                train(get_training_data())
-
-            prediction  = predict(get_training_data(), wind)
-            save_prediction_for_eval(prediction, datetime.now().isoformat())
-            vs_reality  = get_prediction_vs_reality(get_training_data())
-
-            record(df)
-            new_alerts      = check_alerts(df)
-            forecast_frames = run_forecast(state["particles"], df, wind)
-
-            d_lat, d_lon = wind_displacement(wind["wind_speed"], wind["wind_deg"], config.DT)
-            state["particles"]  = step_particles(state["particles"], d_lat, d_lon)
-            state["particles"] += emit_particles(df)
-            state["particles"]  = trim_particles(state["particles"])
-
-            correlation      = get_correlation_data()
-            ranking          = get_district_ranking()
-            weather_forecast = get_weather_forecast()
-            anomalies        = detect_anomalies(df, wind)
-            html = render(state["particles"], df, wind, new_alerts, forecast_frames, prediction, vs_reality, correlation, ranking, weather_forecast, anomalies)
+            state["particles"], html = run_cycle(state["particles"])
             OUTPUT_FILE.write_text(html, encoding="utf-8")
             state["last_update"] = datetime.now().isoformat()
-
         except Exception as ex:
             print(f"[ERROR] {ex}")
-
         time.sleep(config.DT)
-
 
 @app.route("/")
 def index():

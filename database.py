@@ -12,7 +12,9 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "air_data.db"
+import os
+DB_PATH = Path(os.environ.get("DB_PATH", Path(__file__).parent / "air_data.db"))
+DB_PATH=/data/air_data.db
 
 
 def init_db():

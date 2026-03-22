@@ -19,6 +19,7 @@ from correlation import get_correlation_data
 from district_ranking import get_district_ranking
 from weather_forecast import get_weather_forecast
 from anomaly import detect_anomalies
+from core import run_cycle
 
 print("╔══════════════════════════════════════════════╗")
 print("║  YEREVAN AIR POLLUTION SIMULATION  v4.0      ║")
@@ -39,55 +40,12 @@ print("  DB initialized → air_data.db")
 while True:
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"\n[{ts}] ── Цикл обновления ──")
-
-    df   = fetch_air_data()
-    wind = fetch_wind_data()
-    # Сохраняем в БД
-    save_measurements(df, wind)
-    row_count = get_row_count()
-    print(f"  DB: {row_count} записей")
-
-    # Переобучение каждые 100 новых записей
-    if row_count % 100 == 0 and row_count > 0:
-        print("  [LSTM] Переобучение...")
-        train(get_training_data())
-
-    # Предсказание
-    prediction = predict(get_training_data(), wind)
-    save_prediction_for_eval(prediction, datetime.now().isoformat())
-
-    # Сравнение prediction vs reality
-    vs_reality = get_prediction_vs_reality(get_training_data())
-    for p in prediction:
-        print(f"  Pred {p['horizon']:4s}: PM2.5={p['pm25']:5.1f}±{p['pm25_hi']-p['pm25']:.1f} "
-              f"AQI={p['aqi']:3d} conf={p['confidence']:.0%} [{p['model']}]")
-    record(df)
-
-    new_alerts = check_alerts(df)
-    for a in new_alerts:
-        print(f"  ⚠ ALERT: {a['name']} AQI={a['aqi']} [{a['label']}]")
-
-    print(f"  Running {config.FORECAST_STEPS}-step forecast...")
-    forecast_frames = run_forecast(particles, df, wind)
-    print(f"  Forecast: {len(forecast_frames)} frames, "
-          f"AQI in 1h = {forecast_frames[-1]['avg_aqi']}")
-
-    d_lat, d_lon = wind_displacement(wind["wind_speed"], wind["wind_deg"], config.DT)
-    particles    = step_particles(particles, d_lat, d_lon)
-    particles   += emit_particles(df)
-    particles    = trim_particles(particles)
-
-    correlation      = get_correlation_data()
-    ranking          = get_district_ranking()
-    weather_forecast = get_weather_forecast()
-    anomalies        = detect_anomalies(df, wind)
-    html = render(particles, df, wind, new_alerts, forecast_frames, prediction, vs_reality, correlation, ranking, weather_forecast, anomalies)
-
+    
+    particles, html = run_cycle(particles)
+    
     with open(config.OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(html)
-
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] ✓ {config.OUTPUT_FILE} "
-          f"({len(particles)} particles)")
+    
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] ✓ {config.OUTPUT_FILE}")
     print(f"  Следующее обновление через {config.DT // 60} мин...\n")
-
     time.sleep(config.DT)

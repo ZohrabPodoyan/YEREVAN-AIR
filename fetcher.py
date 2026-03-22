@@ -161,18 +161,25 @@ def fetch_air_data() -> pd.DataFrame:
             print(f"  [OpenAQ] {loc['name'][:40]} — нет PM данных, пропускаем")
             continue
 
-        rows.append({"name": loc["name"], "lat": loc["lat"], "lon": loc["lon"], **m})
-        print(f"  [OpenAQ] ✓ {loc['name'][:35]:37s} "
-              f"PM2.5={m['pm25']:5.1f}  PM10={m['pm10']:5.1f}  "
-              f"NO2={m['no2']:5.1f}  O3={m['o3']:5.1f}")
-        time.sleep(0.25)
-
-    if not rows:
-        print("  [OpenAQ] ⚠ нет рабочих станций → fallback данные")
-        rows = [{"name": "Yerevan (fallback)", "lat": config.LAT_CENTER, "lon": config.LON_CENTER,
-                 "pm25": 20.0, "pm10": 30.0, "no2": 5.0, "o3": 60.0}]
-
-    return pd.DataFrame(rows)
+        seen_names = set()
+        for loc in locations[:50]:
+            m = _fetch_latest(loc["id"], loc["sensor_params"])
+            if m["pm25"] == 0.0 and m["pm10"] == 0.0:
+                print(f"  [OpenAQ] {loc['name'][:40]} — нет PM данных, пропускаем")
+                continue
+            if m["pm25"] > 500.0:
+                print(f"  [OpenAQ] {loc['name'][:40]} — мусорные данные PM2.5={m['pm25']:.1f}, пропускаем")
+                continue
+            # Дедупликация по имени
+            base_name = loc["name"][:40]
+            if base_name in seen_names:
+                print(f"  [OpenAQ] {loc['name'][:40]} — дубликат, пропускаем")
+                continue
+            seen_names.add(base_name)
+            rows.append({"name": loc["name"], "lat": loc["lat"], "lon": loc["lon"], **m})
+            print(f"  [OpenAQ] ✓ {loc['name'][:35]:37s} "
+                f"PM2.5={m['pm25']:5.1f}  PM10={m['pm10']:5.1f}")
+            time.sleep(0.25)
 
 
 def fetch_wind_data() -> dict:
