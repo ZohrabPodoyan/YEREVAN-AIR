@@ -65,6 +65,29 @@ def health():
         "particles":   len(state["particles"]),
     })
 
+@app.route('/export-db')
+def export_db():
+    import sqlite3
+    import io
+    import csv
+    from flask import Response
+    
+    with sqlite3.connect('/data/air_data.db' if os.path.exists('/data') else 'air_data.db') as conn:
+        cursor = conn.execute("SELECT * FROM measurements")
+        rows = cursor.fetchall()
+        headers = [d[0] for d in cursor.description]
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers)
+    writer.writerows(rows)
+    
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=air_data.csv'}
+    )
+
 
 if __name__ == "__main__":
     thread = threading.Thread(target=simulation_loop, daemon=True)
