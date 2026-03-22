@@ -637,10 +637,11 @@ html, body { width:100%; height:100%; background:var(--bg); color:var(--text); f
       <button class="tab-btn" onclick="switchTab('forecast')">⟳ FORECAST</button>
       <button class="tab-btn" onclick="switchTab('history')">↗ HISTORY</button>
       <button class="tab-btn" onclick="switchTab('prediction')">🔮 PREDICT</button>
-      <button class="tab-btn" onclick="switchTab('correlation')">📊 STATS</button></div>
+      <button class="tab-btn" onclick="switchTab('correlation')">📊 STATS</button>
       <button class="tab-btn" onclick="switchTab('ranking')">🏆 RATING</button>
       <button class="tab-btn" onclick="switchTab('weather')">🌤 WEATHER</button>
       <button class="tab-btn" onclick="switchTab('anomaly')">⚠ ANOMALY</button>
+    </div>
     <!-- TAB: LIVE -->
     <div class="tab-panel active" id="tab-live">
       <div class="section-title">▸ overall air quality</div>
@@ -724,8 +725,7 @@ html, body { width:100%; height:100%; background:var(--bg); color:var(--text); f
   <div id="ranking-list"></div>
 </div>
   </aside>
-  <div id="alert-container"></div>
-<!-- TAB: WEATHER FORECAST -->
+  <!-- TAB: WEATHER FORECAST -->
 <div class="tab-panel" id="tab-weather">
   <div class="section-title">▸ 3-day weather + est. aqi</div>
   <div id="weather-list"></div>
@@ -736,6 +736,10 @@ html, body { width:100%; height:100%; background:var(--bg); color:var(--text); f
   <div class="section-title">▸ anomaly detector</div>
   <div id="anomaly-list"></div>
 </div>
+
+  </aside>
+  <div id="alert-container"></div>
+
   <!-- MAP -->
 <main id="map">
   <div id="leaflet"></div>
@@ -978,7 +982,7 @@ animateWind();
 // ── TABS ──
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['live','forecast','history','prediction'][i] === name);
+    b.classList.toggle('active', ['live','forecast','history','prediction','correlation','ranking','weather','anomaly'][i] === name);
   });
   document.querySelectorAll('.tab-panel').forEach(p => {
     p.classList.toggle('active', p.id === 'tab-' + name);
