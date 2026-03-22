@@ -751,7 +751,15 @@ html, body { width:100%; height:100%; background:var(--bg); color:var(--text); f
     🗺 YEREVAN &nbsp;·&nbsp; <b>{{lat_center}}°N {{lon_center}}°E</b>
     &nbsp;·&nbsp; {{particle_count}} particles
   </div>
- <div class="source-badge">
+<div class="source-badge" id="source-badge">
+  <div id="source-badge-header" onclick="toggleSourceBadge()" style="
+    display:flex; align-items:center; justify-content:space-between;
+    cursor:pointer; user-select:none;
+  ">
+    <span style="font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:.1em;">⚙ LAYERS</span>
+    <span id="source-badge-arrow" style="color:var(--dim);font-size:10px;">▲</span>
+  </div>
+  <div id="source-badge-content">
     AIR: <b style="color:var(--accent)">OpenAQ v3</b><br>
     WIND: <b style="color:var(--accent)">OpenWeatherMap</b>
     <div class="sat-btn" id="sat-btn" onclick="toggleSatellite()">
@@ -760,10 +768,7 @@ html, body { width:100%; height:100%; background:var(--bg); color:var(--text); f
       </div>
       <span class="sat-btn-label" id="sat-label">🛰 SATELLITE PM2.5</span>
     </div>
-    <!-- Новая кнопка CSV -->
-    <button onclick="downloadCSV()" class="csv-btn">
-      ⬇ EXPORT CSV
-    </button>
+  </div>
 </div>
 </main>
 
@@ -1613,6 +1618,16 @@ function initAnomaly() {
     `;
     el.appendChild(card);
   });
+}
+
+let sourceBadgeOpen = true;
+
+function toggleSourceBadge() {
+  sourceBadgeOpen = !sourceBadgeOpen;
+  const content = document.getElementById('source-badge-content');
+  const arrow   = document.getElementById('source-badge-arrow');
+  content.style.display = sourceBadgeOpen ? 'block' : 'none';
+  arrow.textContent = sourceBadgeOpen ? '▲' : '▼';
 }
 </script>
 
