@@ -133,15 +133,18 @@ html, body { width:100%; height:100%; background:var(--bg); color:var(--text); f
   gap: 1px;
   background: var(--border);
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   margin-bottom: 12px;
   flex-shrink: 0;
   min-height: 32px;
-  
+  scrollbar-width: none;
 }
+.tab-bar::-webkit-scrollbar { display: none; }
+
 .tab-btn {
-  flex: 1;
-  padding: 7px 4px;
+  flex: 0 0 auto;
+  padding: 7px 10px;
   font-family: var(--mono);
   font-size: 9px;
   letter-spacing: .08em;
