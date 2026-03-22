@@ -65,7 +65,7 @@ def simulation_loop():
             ranking          = get_district_ranking()
             weather_forecast = get_weather_forecast()
             anomalies        = detect_anomalies(df, wind)
-            html = render(particles, df, wind, new_alerts, forecast_frames, prediction, vs_reality, correlation, ranking, weather_forecast, anomalies)
+            html = render(state["particles"], df, wind, new_alerts, forecast_frames, prediction, vs_reality, correlation, ranking, weather_forecast, anomalies)
             OUTPUT_FILE.write_text(html, encoding="utf-8")
             state["last_update"] = datetime.now().isoformat()
 
