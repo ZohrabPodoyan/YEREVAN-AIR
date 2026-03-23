@@ -8,4 +8,3 @@ models/
 *.pkl
 yerevan_air.html
 predictions_log.jsonl
-config.py
