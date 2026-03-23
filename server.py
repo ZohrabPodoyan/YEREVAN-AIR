@@ -27,6 +27,9 @@ def simulation_loop():
     if existing >= 200:
         train(get_training_data())
 
+    from telegram_bot import start as start_bot  
+    start_bot() 
+
     while True:
         try:
             state["particles"], html = run_cycle(state["particles"])

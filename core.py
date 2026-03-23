@@ -58,4 +58,10 @@ def run_cycle(particles: list) -> tuple[list, str]:
         weather_forecast, anomalies
     )
 
+    # Telegram notifications
+    from telegram_bot import notify_alerts, set_latest_df
+    set_latest_df(df)
+    if new_alerts:
+        notify_alerts(new_alerts)
+
     return particles, html
