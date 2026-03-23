@@ -24,22 +24,28 @@ _last_digest_date = None
  
 # ── Send helpers ──────────────────────────────────────────────────────────────
  
-def send_message(text: str) -> bool:
+def send_message(text: str, with_keyboard: bool = False) -> bool:
+    keyboard = {
+        "keyboard": [[{"text": "/status"}, {"text": "/top"}]],
+        "resize_keyboard": True,
+        "persistent": True,
+    } if with_keyboard else {"remove_keyboard": True}
+
     try:
         r = requests.post(
             f"{TELEGRAM_API}/sendMessage",
             json={
-                "chat_id":    config.TELEGRAM_CHAT_ID,
-                "text":       text,
-                "parse_mode": "HTML",
+                "chat_id":      config.TELEGRAM_CHAT_ID,
+                "text":         text,
+                "parse_mode":   "HTML",
+                "reply_markup": keyboard,
             },
             timeout=10,
         )
         return r.ok
     except Exception as e:
         print(f"  [Telegram] send error: {e}")
-        return False
- 
+        return False 
  
 # ── Message builders ──────────────────────────────────────────────────────────
  
@@ -191,4 +197,4 @@ def start():
     threading.Thread(target=_polling_loop,       daemon=True).start()
     threading.Thread(target=_morning_digest_loop, daemon=True).start()
     print("  [Telegram] bot started — polling for commands")
-    send_message("🚀 <b>Yerevan Air bot started!</b>\nSend /status to get current AQI.")
+    send_message("🚀 <b>Yerevan Air bot started!</b>\nSend /status to get current AQI.", with_keyboard=True)
