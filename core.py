@@ -59,8 +59,9 @@ def run_cycle(particles: list) -> tuple[list, str]:
     )
 
     # Telegram notifications
-    from telegram_bot import notify_alerts, set_latest_df
+    from telegram_bot import notify_alerts, set_latest_df, set_latest_wind
     set_latest_df(df)
+    set_latest_wind(wind)
     if new_alerts:
         notify_alerts(new_alerts)
 
