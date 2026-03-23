@@ -16,6 +16,8 @@ def check_alerts(df) -> list[dict]:
     for _, row in df.iterrows():
         name = row["name"]
         aqi, label, color = pm25_to_aqi(row["pm25"])
+        if aqi == 500:
+            continue
         exceeded = aqi >= config.ALERT_THRESHOLD
         prev = _last_status.get(name, "ok")
         if exceeded and prev == "ok":
