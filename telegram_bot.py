@@ -142,9 +142,7 @@ def _handle_commands():
  
             if text in ("/status", "/start"):
                 if _df_ref[0] is not None:
-                    send_message(build_status_message(_df_ref[0]))
-                else:
-                    send_message("⏳ Still loading data, try again in 30 seconds.")
+                    send_message(build_status_message(_df_ref[0]), with_keyboard=True)
  
             elif text == "/top":
                 if _df_ref[0] is not None:
