@@ -39,16 +39,18 @@ def run_forecast(particles: list, df, wind: dict) -> list[dict]:
     sim_particles = deepcopy(particles)
     frames = []
 
+    from aqi import AQI_BREAKPOINTS
+
+    def aqi_to_label_color(aqi):
+        for _, _, a_lo, a_hi, label, color in AQI_BREAKPOINTS:
+            if a_lo <= aqi <= a_hi:
+                return label, color
+        return "Hazardous", "#b71c1c"
+
     for step in range(FORECAST_STEPS + 1):
         # snapshot текущего состояния
         heat = [[p["lat"], p["lon"], p["value"]] for p in sim_particles]
         avg_aqi = int(np.mean([p["value"] for p in sim_particles])) if sim_particles else 0
-        from aqi import AQI_BREAKPOINTS
-        def aqi_to_label_color(aqi):
-            for _, _, a_lo, a_hi, label, color in AQI_BREAKPOINTS:
-                if a_lo <= aqi <= a_hi:
-                    return label, color
-            return "Hazardous", "#b71c1c"
 
         label, color = aqi_to_label_color(avg_aqi)
 

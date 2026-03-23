@@ -24,20 +24,15 @@ def get_city_history() -> list[dict]:
     """Усреднённая история по всем станциям, последние 48 точек (4 часа)."""
     if not _history:
         return []
-    all_times, seen = [], set()
+
+    # Собираем все временные метки по порядку (O(n))
+    time_to_vals: dict[str, list] = {}
     for dq in _history.values():
         for p in dq:
-            if p["t"] not in seen:
-                all_times.append(p["t"])
-                seen.add(p["t"])
-    result = []
-    for t in all_times:
-        vals = []
-        for dq in _history.values():
-            for p in dq:
-                if p["t"] == t:
-                    vals.append(p["aqi"])
-                    break
-        if vals:
-            result.append({"t": t, "aqi": int(sum(vals) / len(vals))})
+            time_to_vals.setdefault(p["t"], []).append(p["aqi"])
+
+    result = [
+        {"t": t, "aqi": int(sum(vals) / len(vals))}
+        for t, vals in time_to_vals.items()
+    ]
     return result[-48:]

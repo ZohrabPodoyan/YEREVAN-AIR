@@ -17,6 +17,8 @@ from datetime import datetime
 import warnings
 warnings.filterwarnings("ignore")
 
+from aqi import pm25_to_aqi
+
 MODEL_DIR = Path(__file__).parent / "models"
 MODEL_DIR.mkdir(exist_ok=True)
 
@@ -371,7 +373,7 @@ def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
                 "pred_pm25":   pred_1h["pm25"],
                 "real_pm25":   round(real_pm25, 1),
                 "pred_aqi":    pred_1h["aqi"],
-                "real_aqi":    pm25_to_aqi(real_pm25)[0],
+                "real_aqi":    pm25_to_aqi(real_pm25)[0],  # uses top-level import
                 "error":       round(abs(pred_1h["pm25"] - real_pm25), 1),
             })
     except Exception as ex:
@@ -380,6 +382,4 @@ def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
     return results[-24:]  # последние 24 точки
 
 
-def pm25_to_aqi(pm25):
-    from aqi import pm25_to_aqi as _fn
-    return _fn(pm25)
+from aqi import pm25_to_aqi

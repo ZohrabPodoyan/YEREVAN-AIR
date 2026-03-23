@@ -10,18 +10,8 @@ import config
 from flask import Flask, send_file, jsonify
 from datetime import datetime
 from pathlib import Path
-from fetcher   import fetch_air_data, fetch_wind_data
-from physics   import wind_displacement, step_particles, emit_particles, trim_particles
-from renderer  import render
-from history   import record
-from alerts    import check_alerts
-from forecast  import run_forecast
-from database  import init_db, save_measurements, get_training_data, get_row_count
-from predictor import train, predict, save_prediction_for_eval, get_prediction_vs_reality
-from correlation import get_correlation_data
-from district_ranking import get_district_ranking
-from weather_forecast import get_weather_forecast
-from anomaly import detect_anomalies
+from database import init_db, get_training_data, get_row_count
+from predictor import train
 from core import run_cycle
 
 app = Flask(__name__)
