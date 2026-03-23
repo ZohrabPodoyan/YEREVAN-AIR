@@ -169,10 +169,10 @@ def _handle_commands():
                     for i, (name, aqi, pm25) in enumerate(rows, 1):
                         lines.append(
                             f"{i}. {_aqi_emoji(aqi)} <b>{name[:30]}</b> — AQI {aqi}  PM2.5: {pm25:.1f}")
-                    send_message("\n".join(lines))
+                    send_message("\n".join(lines), with_keyboard=True)
                 else:
                     send_message(
-                        "⏳ Still loading data, try again in 30 seconds.")
+                        "⏳ Still loading data, try again in 30 seconds.", with_keyboard=True)
 
             elif text == "/help":
                 send_message(
@@ -180,7 +180,8 @@ def _handle_commands():
                     "/status — current AQI for all stations\n"
                     "/top    — top 5 most polluted stations\n"
                     "/help   — this message\n\n"
-                    "🔔 Automatic alerts when AQI exceeds threshold."
+                    "🔔 Automatic alerts when AQI exceeds threshold.",
+                    with_keyboard=True
                 )
 
     except Exception as e:
