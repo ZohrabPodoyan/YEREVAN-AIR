@@ -993,10 +993,10 @@ function initStreaks() {
   }));
 }
 
-// Ждём пока карта полностью загрузится
 map.whenReady(() => {
   resizeWind();
-  window.addEventListener('resize', resizeWind);
+  initStreaks();
+  window.addEventListener('resize', () => { resizeWind(); initStreaks(); });
   animateWind();
 });
 
