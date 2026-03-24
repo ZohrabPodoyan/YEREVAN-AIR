@@ -997,7 +997,7 @@ html.dark .logo span {
         <div class="aqi-glow-bg" style="background:radial-gradient(ellipse at 50% 0%,{{ aqi_color | safe }} 0%,transparent 70%)"></div>
         <div class="aqi-value" style="color:{{ aqi_color | safe }}">{{avg_aqi}}</div>
         <div class="aqi-label" style="color:{{ aqi_color | safe }}">{{avg_label}}</div>
-        <div class="aqi-pm">PM2.5 · {{avg_pm25}} μg/m³ &nbsp;|&nbsp; PM10 · {{avg_pm10}} μg/m³</div>
+        <div class="aqi-pm" style="white-space:nowrap">PM2.5 · {{avg_pm25}} μg/m³ &nbsp;|&nbsp; PM10 · {{avg_pm10}} μg/m³</div>
         <div class="gauge-wrap">
           <div class="gauge-track">
             <div class="gauge-needle" style="left:{{gauge_pct}}%"></div>
@@ -1180,8 +1180,40 @@ const WEATHER_FORECAST = {{ weather_forecast_json | safe }};
 const ANOMALIES        = {{ anomalies_json | safe }};
 
 // ── TRANSLITERATION ──
+// Yerevan districts mapping
+const DISTRICT_MAP = {
+  'Аджапняк': 'Ajapnyak',
+  'Арабкир': 'Arabkir',
+  'Аван': 'Avan',
+  'Давташен': 'Davtashen',
+  'Эребуни': 'Erebuni',
+  'Канакер-Зейтун': 'Kanaker-Zeytun',
+  'Кентрон': 'Kentron',
+  'Малатия-Себастия': 'Malatia-Sebastia',
+  'Норк-Мараш': 'Nork-Marash',
+  'Нор Норк': 'Nor Nork',
+  'Нубарашен': 'Nubarashen',
+  'Шенгавит': 'Shengavit',
+  'Норк': 'Nork',
+  'Арабкир': 'Arabkir'
+};
+
 function transliterateRUtoEN(text) {
   if (!text) return '';
+  
+  // Check district map first
+  for (const [ru, en] of Object.entries(DISTRICT_MAP)) {
+    if (text.includes(ru)) {
+      return text.replace(ru, en);
+    }
+  }
+  
+  // Translate severity
+  if (text === 'ЛОКАЛЬНАЯ' || text === 'kniakhmay') return 'LOCAL';
+  
+  // Replace 'mnpla' with 'baseline'
+  text = text.replace(/mnpla/gi, 'baseline');
+  
   const ru = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
   const en = 'abvgdeezhziiklmnoprstufkhcchshshyieyuABVGDEEZHIIKLMNOPRSTUFKHCCHSHSHYIEYU';
   let result = '';
@@ -1192,6 +1224,41 @@ function transliterateRUtoEN(text) {
   return result;
 }
 
+// Day names translation
+const DAY_NAMES = {
+  'Пн': 'Mon', 'Вт': 'Tue', 'Ср': 'Wed', 'Чт': 'Thu', 'Пт': 'Fri', 'Сб': 'Sat', 'Вс': 'Sun',
+  'понедельник': 'Monday', 'вторник': 'Tuesday', 'среда': 'Wednesday',
+  'четверг': 'Thursday', 'пятница': 'Friday', 'суббота': 'Saturday', 'воскресенье': 'Sunday'
+};
+
+function translateDay(text) {
+  if (!text) return '';
+  for (const [ru, en] of Object.entries(DAY_NAMES)) {
+    if (text.toLowerCase().includes(ru.toLowerCase())) {
+      return en;
+    }
+  }
+  return text;
+}
+
+// Save/load theme preference
+function loadTheme() {
+  const saved = localStorage.getItem('yerevanAirTheme');
+  if (saved === 'dark') {
+    isDark = true;
+    document.documentElement.classList.add('dark');
+    document.getElementById('theme-btn').textContent = '☀ LIGHT MODE';
+  } else {
+    isDark = false;
+    document.documentElement.classList.remove('dark');
+    document.getElementById('theme-btn').textContent = '🌙 DARK MODE';
+  }
+}
+
+function saveTheme() {
+  localStorage.setItem('yerevanAirTheme', isDark ? 'dark' : 'light');
+}
+
 let baseTile = null;
 let isDark = false;
 let districtsLayer = null;
@@ -1199,6 +1266,9 @@ let districtsLayer = null;
 // ── COMPASS NEEDLE ──
 document.getElementById('compass-needle').style.transform =
   `translate(-50%, -100%) rotate(${WIND_DEG}deg)`;
+
+// ── LOAD THEME ──
+loadTheme();
 
 // ── LEAFLET MAP ──
 const map = L.map('leaflet', {
@@ -1208,8 +1278,12 @@ const map = L.map('leaflet', {
   attributionControl: false,
 });
 
-// Start with light map tiles (default theme)
-baseTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', { maxZoom:19, opacity: 0.85 });
+// Set map tiles based on loaded theme
+if (isDark) {
+  baseTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom:19 });
+} else {
+  baseTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', { maxZoom:19, opacity: 0.85 });
+}
 baseTile.addTo(map);
 
 // satellite pane — между базовой картой (200) и heatmap overlay (400)
@@ -1229,6 +1303,8 @@ SOURCES.forEach(s => {
     "></div>`,
     iconSize:[14,14], iconAnchor:[7,7]
   });
+  const stationNameEN = transliterateRUtoEN(s.name);
+  const stationLabelEN = transliterateRUtoEN(s.label);
   L.marker([s.lat, s.lon], {icon})
     .bindPopup(`
       <div class="station-popup" style="
@@ -1239,9 +1315,9 @@ SOURCES.forEach(s => {
         border:1px solid var(--border-color);
         box-shadow:var(--shadow-8);
       ">
-        <b style="font-size:12px;color:var(--neutral-darker)">${s.name}</b><br>
+        <b style="font-size:12px;color:var(--neutral-darker)">${stationNameEN}</b><br>
         <span style="color:${s.color};font-size:22px;font-weight:700">AQI ${s.aqi}</span>
-        &nbsp;<i style="color:${s.color};font-size:10px">${s.label}</i>
+        &nbsp;<i style="color:${s.color};font-size:10px">${stationLabelEN}</i>
         <hr style="border-color:var(--border-color);margin:6px 0">
         <span style="font-size:10px;color:var(--neutral-dark)">
           PM2.5 &nbsp;<b style="color:var(--neutral-darker)">${s.pm25} μg/m³</b><br>
@@ -1579,11 +1655,11 @@ function initPrediction() {
         <div style="font-family:var(--mono);font-size:7px;color:var(--dim)">+${p.hours}h</div>
       </div>
       <div style="flex:1;min-width:0">
-        <div style="font-family:var(--mono);font-size:10px;color:${p.color}">${p.label}</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--dim)">
-          PM2.5 ${p.pm25} <span style="font-size:8px">[${p.pm25_lo}–${p.pm25_hi}]</span> μg/m³
+        <div style="font-family:var(--font-family-mono);font-size:10px;color:${p.color}">${p.label}</div>
+        <div style="font-family:var(--font-family-mono);font-size:9px;color:var(--neutral-dark)">
+          PM2.5 ${p.pm25} μg/m³
         </div>
-        <div style="margin-top:4px;height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+        <div style="margin-top:4px;height:3px;background:var(--border-color);border-radius:2px;overflow:hidden">
           <div style="height:100%;width:${confPct}%;background:${confColor};
                       border-radius:2px;transition:width 1s"></div>
         </div>
@@ -1716,6 +1792,7 @@ function toggleTheme() {
   isDark = !isDark;
   document.documentElement.classList.toggle('dark', isDark);
   document.getElementById('theme-btn').textContent = isDark ? '☀ LIGHT MODE' : '🌙 DARK MODE';
+  saveTheme();
 
   // Switch map tile layer
   if (baseTile) map.removeLayer(baseTile);
@@ -1832,8 +1909,8 @@ function initCorrelation() {
     el.innerHTML = `
       PEAK HOUR &nbsp;<b style="color:#ffa726">${wh.hour}:00</b> — PM2.5 ${wh.pm25} μg/m³<br>
       CLEANEST &nbsp;&nbsp;<b style="color:#00e676">${bh.hour}:00</b> — PM2.5 ${bh.pm25} μg/m³<br>
-      WORST DAY &nbsp;<b style="color:#ffa726">${wd.name}</b> — PM2.5 ${wd.pm25} μg/m³<br>
-      BEST DAY &nbsp;&nbsp;<b style="color:#00e676">${bd.name}</b> — PM2.5 ${bd.pm25} μg/m³
+      WORST DAY &nbsp;<b style="color:#ffa726">${translateDay(wd.name)}</b> — PM2.5 ${wd.pm25} μg/m³<br>
+      BEST DAY &nbsp;&nbsp;<b style="color:#00e676">${translateDay(bd.name)}</b> — PM2.5 ${bd.pm25} μg/m³
     `;
   } else {
     el.innerHTML = 'Collecting data...';
@@ -1938,11 +2015,9 @@ function initAnomaly() {
       background:var(--neutral-light); border:1px solid ${a.color};
       border-radius:8px; padding:10px 12px; margin-bottom:6px;
     `;
-    // Translate severity: ЛОКАЛЬНАЯ → LOCAL
-    const severityEN = a.severity === 'ЛОКАЛЬНАЯ' ? 'LOCAL' : transliterateRUtoEN(a.severity);
-    // Transliterate message and replace Станция with Station
-    let messageEN = transliterateRUtoEN(a.message);
-    messageEN = messageEN.replace(/Stanciya/gi, 'Station').replace(/Stanция/gi, 'Station');
+    // Translate severity and message
+    const severityEN = transliterateRUtoEN(a.severity);
+    const messageEN = transliterateRUtoEN(a.message);
     
     card.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
