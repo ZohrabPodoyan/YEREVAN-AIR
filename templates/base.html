@@ -194,6 +194,12 @@ html, body {
   font-weight: var(--font-weight-semibold);
 }
 
+/* AQI Index - push to right */
+.hstat-aqi {
+  margin-left: auto;
+  text-align: right;
+}
+
 /* Status indicator */
 .pulse-dot {
   width: 8px; height: 8px; border-radius: 50%;
@@ -502,7 +508,7 @@ html, body {
   bottom: var(--spacing-16);
   left: var(--spacing-16);
   z-index: 600;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--neutral-lightest);
   backdrop-filter: blur(8px);
   border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-medium);
@@ -513,13 +519,15 @@ html, body {
   box-shadow: var(--shadow-8);
 }
 .map-badge b { color: var(--theme-primary); }
+html.dark .map-badge { color: var(--neutral-darker); }
+html.dark .map-badge b { color: var(--theme-primary-light); }
 
 .source-badge {
   position: absolute;
   top: var(--spacing-16);
   right: var(--spacing-16);
   z-index: 600;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--neutral-lightest);
   backdrop-filter: blur(8px);
   border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-medium);
@@ -786,6 +794,20 @@ html, body {
   border-radius: var(--radius-small);
 }
 
+/* Station popup - override Leaflet defaults */
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: var(--neutral-lightest) !important;
+  box-shadow: var(--shadow-8) !important;
+}
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.5 !important;
+}
+.station-popup {
+  background: var(--neutral-lightest) !important;
+  color: var(--neutral-darker) !important;
+}
+
 /* Animations */
 @keyframes pulse {
   0%  { box-shadow: 0 0 0 0 rgba(16, 124, 16, 0.5); }
@@ -814,7 +836,7 @@ html, body {
 
 /* District tooltip */
 .district-tooltip {
-  background: rgba(255, 255, 255, 0.97);
+  background: var(--neutral-lightest);
   border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-medium);
   padding: var(--spacing-8) var(--spacing-12);
@@ -949,7 +971,7 @@ html.dark .logo span {
       ☀ LIGHT
     </button>
     <div class="sep" aria-hidden="true"></div>
-    <div class="hstat" style="text-align:right" aria-label="AQI index">
+    <div class="hstat hstat-aqi" aria-label="AQI index">
       US EPA AQI INDEX<br>
       <b style="color:{{ aqi_color | safe }}">AQI {{avg_aqi}}</b>
     </div>
@@ -1171,7 +1193,7 @@ function transliterateRUtoEN(text) {
 }
 
 let baseTile = null;
-let isDark = true;
+let isDark = false;
 let districtsLayer = null;
 
 // ── COMPASS NEEDLE ──
@@ -1186,7 +1208,8 @@ const map = L.map('leaflet', {
   attributionControl: false,
 });
 
-baseTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom:19 });
+// Start with light map tiles (default theme)
+baseTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', { maxZoom:19, opacity: 0.85 });
 baseTile.addTo(map);
 
 // satellite pane — между базовой картой (200) и heatmap overlay (400)
@@ -1208,21 +1231,27 @@ SOURCES.forEach(s => {
   });
   L.marker([s.lat, s.lon], {icon})
     .bindPopup(`
-      <div style="font-family:'Space Mono',monospace;background:#0d1520;color:#c8dff0;
-                  padding:12px;border-radius:8px;min-width:200px;border:1px solid #1a2840">
-        <b style="font-size:12px;color:#fff">${s.name}</b><br>
+      <div class="station-popup" style="
+        font-family:'Space Mono',monospace;
+        padding:12px;border-radius:8px;min-width:200px;
+        background:var(--neutral-lightest);
+        color:var(--neutral-darker);
+        border:1px solid var(--border-color);
+        box-shadow:var(--shadow-8);
+      ">
+        <b style="font-size:12px;color:var(--neutral-darker)">${s.name}</b><br>
         <span style="color:${s.color};font-size:22px;font-weight:700">AQI ${s.aqi}</span>
         &nbsp;<i style="color:${s.color};font-size:10px">${s.label}</i>
-        <hr style="border-color:#1a2840;margin:6px 0">
-        <span style="font-size:10px;color:#3a5068">
-          PM2.5 &nbsp;<b style="color:#c8dff0">${s.pm25} μg/m³</b><br>
-          PM10 &nbsp;&nbsp;<b style="color:#c8dff0">${s.pm10} μg/m³</b><br>
-          NO₂ &nbsp;&nbsp;&nbsp;<b style="color:#c8dff0">${s.no2} μg/m³</b><br>
-          O₃ &nbsp;&nbsp;&nbsp;&nbsp;<b style="color:#c8dff0">${s.o3} μg/m³</b>
+        <hr style="border-color:var(--border-color);margin:6px 0">
+        <span style="font-size:10px;color:var(--neutral-dark)">
+          PM2.5 &nbsp;<b style="color:var(--neutral-darker)">${s.pm25} μg/m³</b><br>
+          PM10 &nbsp;&nbsp;<b style="color:var(--neutral-darker)">${s.pm10} μg/m³</b><br>
+          NO₂ &nbsp;&nbsp;&nbsp;<b style="color:var(--neutral-darker)">${s.no2} μg/m³</b><br>
+          O₃ &nbsp;&nbsp;&nbsp;&nbsp;<b style="color:var(--neutral-darker)">${s.o3} μg/m³</b>
         </span>
-        <hr style="border-color:#1a2840;margin:6px 0">
-        <span style="font-size:9px;color:#3a5068">source: OpenAQ v3</span>
-      </div>`, {className: ''}
+        <hr style="border-color:var(--border-color);margin:6px 0">
+        <span style="font-size:9px;color:var(--neutral-dark)">source: OpenAQ v3</span>
+      </div>`, {className: 'station-popup'}
     ).addTo(map);
 });
 
