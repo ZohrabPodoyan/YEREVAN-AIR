@@ -959,14 +959,7 @@ const WIND_PX  = (WIND_SPEED * 0.5) + 0.8;
 const WIND_RAD = (WIND_DEG + 180) * Math.PI / 180;
 const WDX = Math.sin(WIND_RAD) * WIND_PX;
 const WDY = -Math.cos(WIND_RAD) * WIND_PX;
-
-const streaks = Array.from({length: 90}, () => ({
-  x:     Math.random() * wCanvas.offsetWidth,
-  y:     Math.random() * wCanvas.offsetHeight,
-  len:   8  + Math.random() * 24,
-  alpha: 0.04 + Math.random() * 0.13,
-  speed: 0.4 + Math.random() * 1.6,
-}));
+;
 
 function animateWind() {
   wCtx.clearRect(0, 0, wCanvas.width, wCanvas.height);
@@ -986,6 +979,18 @@ function animateWind() {
     if (s.y > wCanvas.height+50) s.y = -50;
   });
   requestAnimationFrame(animateWind);
+}
+
+let streaks = [];
+
+function initStreaks() {
+  streaks = Array.from({length: 90}, () => ({
+    x:     Math.random() * wCanvas.width,
+    y:     Math.random() * wCanvas.height,
+    len:   8  + Math.random() * 24,
+    alpha: 0.04 + Math.random() * 0.13,
+    speed: 0.4 + Math.random() * 1.6,
+  }));
 }
 
 // Ждём пока карта полностью загрузится
