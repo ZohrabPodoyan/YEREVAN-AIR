@@ -985,12 +985,12 @@ function animateWind() {
 let streaks = [];
 
 function initStreaks() {
-  streaks = Array.from({length: 90}, () => ({
+  streaks = Array.from({length: 200}, () => ({
     x:     Math.random() * wCanvas.width,
     y:     Math.random() * wCanvas.height,
-    len:   8  + Math.random() * 24,
-    alpha: 0.04 + Math.random() * 0.13,
-    speed: 0.4 + Math.random() * 1.6,
+    len:   30  + Math.random() * 60,
+    alpha: 0.14 + Math.random() * 0.25,
+    speed: 0.4 + Math.random() * 2.4,
   }));
 }
 
