@@ -402,11 +402,11 @@ html, body {
 /* Forecast steps */
 .fc-step {
   flex-shrink: 0;
-  width: 56px;
+  width: 72px;
   background: var(--neutral-lightest);
   border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-medium);
-  padding: var(--spacing-8) var(--spacing-4);
+  padding: var(--spacing-8) var(--spacing-6);
   text-align: center;
   cursor: pointer;
   transition: border-color var(--duration-fast), box-shadow var(--duration-fast), transform var(--duration-fast);
@@ -439,8 +439,9 @@ html, body {
   margin: var(--spacing-2) 0;
 }
 .fc-step-lbl {
-  font-size: var(--font-size-9);
-  font-family: var(--font-family-mono);
+  font-size: var(--font-size-10);
+  font-family: var(--font-family-base);
+  font-weight: var(--font-weight-semibold);
 }
 .fc-bar {
   height: 3px;
@@ -899,8 +900,8 @@ html, body {
   margin: 0 var(--spacing-8);
 }
 
-/* Light theme overrides */
-html.light {
+/* Dark theme overrides */
+html.dark {
   --neutral-lightest: #1b1a19;
   --neutral-light: #292827;
   --neutral-lighter: #323130;
@@ -909,14 +910,14 @@ html.light {
   --neutral-dark: #c8c6c4;
   --neutral-darker: #f3f2f1;
 }
-html.light #header {
+html.dark #header {
   background: var(--neutral-lightest);
   border-bottom-color: var(--neutral-lighter);
 }
-html.light .logo {
+html.dark .logo {
   color: var(--neutral-darker);
 }
-html.light .logo span {
+html.dark .logo span {
   color: var(--neutral-dark);
 }
 </style>
@@ -1065,14 +1066,14 @@ html.light .logo span {
     </div>
     
     <div class="source-badge" id="source-badge">
-      <div id="source-badge-header" onclick="toggleSourceBadge()" aria-expanded="true" aria-controls="source-badge-content" style="
+      <div id="source-badge-header" onclick="toggleSourceBadge()" aria-expanded="false" aria-controls="source-badge-content" style="
         display:flex; align-items:center; justify-content:space-between;
         cursor:pointer; user-select:none;
       ">
-        <span style="font-family:var(--font-family-mono);font-size:var(--font-size-10);color:var(--theme-primary);letter-spacing:0.1em;">⚙ LAYERS</span>
-        <span id="source-badge-arrow" style="color:var(--neutral-dark);font-size:var(--font-size-10);">▲</span>
+        <span style="font-family:var(--font-family-mono);font-size:var(--font-size-10);color:var(--theme-primary);letter-spacing:0.1em;">LAYERS</span>
+        <span id="source-badge-arrow" style="color:var(--neutral-dark);font-size:var(--font-size-10);">▼</span>
       </div>
-      <div id="source-badge-content">
+      <div id="source-badge-content" style="display:none;">
         AIR: <b style="color:var(--theme-primary)">OpenAQ v3</b><br>
         WIND: <b style="color:var(--theme-primary)">OpenWeatherMap</b>
         <div class="sat-btn" id="sat-btn" onclick="toggleSatellite()" role="switch" aria-checked="false" tabindex="0">
@@ -1155,6 +1156,19 @@ const CORRELATION = {{ correlation_json | safe }};
 const RANKING = {{ ranking_json | safe }};
 const WEATHER_FORECAST = {{ weather_forecast_json | safe }};
 const ANOMALIES        = {{ anomalies_json | safe }};
+
+// ── TRANSLITERATION ──
+function transliterateRUtoEN(text) {
+  if (!text) return '';
+  const ru = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+  const en = 'abvgdeezhziiklmnoprstufkhcchshshyieyuABVGDEEZHIIKLMNOPRSTUFKHCCHSHSHYIEYU';
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    const idx = ru.indexOf(text[i]);
+    result += idx >= 0 ? en[idx] : text[i];
+  }
+  return result;
+}
 
 let baseTile = null;
 let isDark = true;
@@ -1671,7 +1685,7 @@ function drawPredInfo() {
 
 function toggleTheme() {
   isDark = !isDark;
-  document.documentElement.classList.toggle('light', !isDark);
+  document.documentElement.classList.toggle('dark', isDark);
   document.getElementById('theme-btn').textContent = isDark ? '☀ LIGHT MODE' : '🌙 DARK MODE';
 
   // Switch map tile layer
@@ -1809,6 +1823,7 @@ function initRanking() {
 
   RANKING.forEach((d, i) => {
     const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+    const districtName = transliterateRUtoEN(d.district);
     const card = document.createElement('div');
     card.style.cssText = `
       background:var(--neutral-light); border:1px solid var(--border-color);
@@ -1818,7 +1833,7 @@ function initRanking() {
     `;
     card.innerHTML = `
       <div style="font-size:14px;flex-shrink:0">${medal}</div>
-      <div style="flex:1;font-family:var(--font-family-mono);font-size:10px;color:var(--neutral-darker)">${d.district}</div>
+      <div style="flex:1;font-family:var(--font-family-mono);font-size:10px;color:var(--neutral-darker)">${districtName}</div>
       <div style="font-family:var(--font-family-mono);font-size:9px;color:var(--neutral-dark)">PM2.5 ${d.pm25}</div>
       <div style="font-family:var(--font-family-mono);font-size:13px;font-weight:700;color:${d.color}">${d.aqi}</div>
     `;
@@ -1894,15 +1909,21 @@ function initAnomaly() {
       background:var(--neutral-light); border:1px solid ${a.color};
       border-radius:8px; padding:10px 12px; margin-bottom:6px;
     `;
+    // Translate severity: ЛОКАЛЬНАЯ → LOCAL
+    const severityEN = a.severity === 'ЛОКАЛЬНАЯ' ? 'LOCAL' : transliterateRUtoEN(a.severity);
+    // Transliterate message and replace Станция with Station
+    let messageEN = transliterateRUtoEN(a.message);
+    messageEN = messageEN.replace(/Stanciya/gi, 'Station').replace(/Stanция/gi, 'Station');
+    
     card.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span style="font-size:16px">⚠️</span>
         <span style="font-family:var(--font-family-mono);font-size:10px;color:${a.color};font-weight:700">
-          ${a.severity.toUpperCase()}
+          ${severityEN}
         </span>
       </div>
       <div style="font-family:var(--font-family-mono);font-size:9px;color:var(--neutral-dark);line-height:1.8">
-        ${a.message}
+        ${messageEN}
       </div>
       ${a.recent ? `
       <div style="display:flex;gap:12px;margin-top:6px;font-family:var(--font-family-mono);font-size:9px">
@@ -1914,14 +1935,16 @@ function initAnomaly() {
   });
 }
 
-let sourceBadgeOpen = true;
+let sourceBadgeOpen = false;
 
 function toggleSourceBadge() {
   sourceBadgeOpen = !sourceBadgeOpen;
   const content = document.getElementById('source-badge-content');
   const arrow   = document.getElementById('source-badge-arrow');
+  const header  = document.getElementById('source-badge-header');
   content.style.display = sourceBadgeOpen ? 'block' : 'none';
   arrow.textContent = sourceBadgeOpen ? '▲' : '▼';
+  header.setAttribute('aria-expanded', sourceBadgeOpen ? 'true' : 'false');
 }
 </script>
 
