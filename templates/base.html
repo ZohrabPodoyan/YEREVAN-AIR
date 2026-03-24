@@ -949,9 +949,17 @@ new DynamicHeatLayer().addTo(map);
 // ── WIND STREAKS ──
 const wCanvas = document.getElementById('wind-canvas');
 const wCtx    = wCanvas.getContext('2d');
-function resizeWind() { wCanvas.width = wCanvas.offsetWidth; wCanvas.height = wCanvas.offsetHeight; }
-resizeWind();
-window.addEventListener('resize', resizeWind);
+function resizeWind() { 
+  wCanvas.width  = wCanvas.offsetWidth  || map.getContainer().offsetWidth; 
+  wCanvas.height = wCanvas.offsetHeight || map.getContainer().offsetHeight; 
+}
+
+// Ждём пока карта полностью загрузится
+map.whenReady(() => {
+  resizeWind();
+  window.addEventListener('resize', resizeWind);
+  animateWind();
+});
 
 const WIND_PX  = (WIND_SPEED * 0.5) + 0.8;
 const WIND_RAD = (WIND_DEG + 180) * Math.PI / 180;
@@ -959,8 +967,8 @@ const WDX = Math.sin(WIND_RAD) * WIND_PX;
 const WDY = -Math.cos(WIND_RAD) * WIND_PX;
 
 const streaks = Array.from({length: 90}, () => ({
-  x:     Math.random() * window.innerWidth,
-  y:     Math.random() * window.innerHeight,
+  x:     Math.random() * wCanvas.offsetWidth,
+  y:     Math.random() * wCanvas.offsetHeight,
   len:   8  + Math.random() * 24,
   alpha: 0.04 + Math.random() * 0.13,
   speed: 0.4 + Math.random() * 1.6,
@@ -985,7 +993,6 @@ function animateWind() {
   });
   requestAnimationFrame(animateWind);
 }
-animateWind();
 
 // ── TABS ──
 function switchTab(name) {
