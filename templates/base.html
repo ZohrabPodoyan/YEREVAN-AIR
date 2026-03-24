@@ -951,8 +951,9 @@ const wCanvas = document.getElementById('wind-canvas');
 const wCtx    = wCanvas.getContext('2d');
 
 function resizeWind() { 
-  wCanvas.width  = wCanvas.offsetWidth  || map.getContainer().offsetWidth; 
-  wCanvas.height = wCanvas.offsetHeight || map.getContainer().offsetHeight; 
+  const mapEl = document.getElementById('map');
+  wCanvas.width  = mapEl.offsetWidth;
+  wCanvas.height = mapEl.offsetHeight;
 }
 
 const WIND_PX  = (WIND_SPEED * 0.5) + 0.8;
