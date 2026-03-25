@@ -47,9 +47,9 @@ def get_weather_forecast() -> list[dict]: # OWM forecast 5 days / 3 hours -> tak
             if wind_speed < 1:
                 base_pm25 *= 1.4   # Calm = stagnation
             if humidity > 80:
-                base_pm25 *= 1.2   # высокая влажность
+                base_pm25 *= 1.2   # high humidity
             if clouds < 20:
-                base_pm25 *= 0.9   # ясно
+                base_pm25 *= 0.9   # clear sky
 
             aqi, label, color = pm25_to_aqi(round(base_pm25, 1))
 

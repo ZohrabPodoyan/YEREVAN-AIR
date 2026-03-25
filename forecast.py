@@ -21,7 +21,7 @@ def run_forecast(particles: list, df, wind: dict) -> list[dict]:
         wind["wind_speed"], wind["wind_deg"], config.DT
     )
 
-    # Стартуем с текущих частиц
+    # Start with current particles
     sim_particles = deepcopy(particles)
     frames = []
 

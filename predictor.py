@@ -114,7 +114,7 @@ def _make_sequences(features: pd.DataFrame, horizon_steps: int):
 
 
 # ══════════════════════════════════════════════
-#  LSTM модель (PyTorch)
+#  LSTM Model (PyTorch)
 # ══════════════════════════════════════════════
 def _get_torch():
     try:
@@ -210,7 +210,7 @@ class LSTMModel:
 
 
 # ══════════════════════════════════════════════
-#  Обучение
+#  Training
 # ══════════════════════════════════════════════
 def train(df_raw: pd.DataFrame): # Training
     torch, _ = _get_torch()
@@ -238,8 +238,7 @@ def train(df_raw: pd.DataFrame): # Training
         if len(X) < 10:
             continue
 
-        print(f"  [LSTM] Обучаю модель {name} ({len(X)} примеров)...")
-        # Training model {name} ({len(X)} examples)...
+        print(f"  [LSTM] Training model {name} ({len(X)} examples)...")
         model = LSTMModel()
         loss  = model.train_model(X, y, epochs=150)
         model.save(MODEL_DIR / f"lstm_{name}.pt")
@@ -250,7 +249,7 @@ def train(df_raw: pd.DataFrame): # Training
 
 
 # ══════════════════════════════════════════════
-#  Предсказание
+#  Prediction
 # ══════════════════════════════════════════════
 def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]: # Prediction
     torch, _ = _get_torch()
@@ -273,9 +272,9 @@ def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]: # Prediction
                 seq = features[FEATURE_COLS].values[-SEQ_LEN:]
                 X   = seq[np.newaxis].astype(np.float32)
 
-                # Monte Carlo dropout для confidence interval
+                # Monte Carlo dropout for confidence interval
                 import torch.nn as nn
-                model.net.train()  # включаем dropout для MC sampling
+                model.net.train()  # enable dropout for MC sampling
                 preds = []
                 for _ in range(30):
                     p = float(model.predict(X)[0])
@@ -291,9 +290,8 @@ def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]: # Prediction
                 pred_pm25 = float(df_raw["pm25"].mean() * (0.97 ** steps))
                 pred_std  = pred_pm25 * 0.15
         else:
-            # Физическая модель затухания как fallback
             # Physical decay model as fallback
-            current = float(df_raw["pm25"].mean()) if len(df_raw) > 0 else 20.0 
+            current = float(df_raw["pm25"].mean()) if len(df_raw) > 0 else 20.0
             BACKGROUND_PM25 = 8.0   # фоновый уровень μg/m³ для Еревана
             pred_pm25 = max(BACKGROUND_PM25, current * (0.995 ** steps))
             pred_std  = pred_pm25 * 0.2
