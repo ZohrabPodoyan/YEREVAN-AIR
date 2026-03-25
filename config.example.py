@@ -7,7 +7,7 @@ LAT_CENTER  = 40.1792
 LON_CENTER  = 44.5133
 OUTPUT_FILE = "yerevan_air.html"
 
-DT            = 300
+DT            = 3600
 DECAY         = 0.94
 DIFFUSION     = 0.0004
 MAX_PARTICLES = 600

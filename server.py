@@ -10,12 +10,12 @@ import config
 from flask import Flask, send_file, jsonify
 from datetime import datetime
 from pathlib import Path
-from database import init_db, get_training_data, get_row_count
+from database import init_db, get_training_data, get_row_count, DB_PATH
 from predictor import train
 from core import run_cycle
 
 app = Flask(__name__)
-OUTPUT_FILE = Path("yerevan_air.html")
+OUTPUT_FILE = Path(config.OUTPUT_FILE)
 
 state = {"particles": [], "last_update": None, "running": False}
 
@@ -64,8 +64,8 @@ def export_db():
     import io
     import csv
     from flask import Response
-    
-    with sqlite3.connect('/data/air_data.db' if os.path.exists('/data') else 'air_data.db') as conn:
+
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.execute("SELECT * FROM measurements")
         rows = cursor.fetchall()
         headers = [d[0] for d in cursor.description]

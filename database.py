@@ -10,6 +10,7 @@ database.py — сбор исторических данных в SQLite для 
 
 import sqlite3
 import os
+import pandas as pd
 from datetime import datetime
 from pathlib import Path
 
@@ -71,13 +72,14 @@ def get_training_data():
     Фича: текущие условия → таргет: pm25 через 24 часа (следующий день тот же час).
     Используем lag: pm25_lag1h, pm25_lag3h, pm25_lag6h, pm25_lag12h, pm25_lag24h.
     """
-    import pandas as pd
+    # Limit to last 3000 rows (approx 4 months of data) to maintain performance
     with sqlite3.connect(DB_PATH) as conn:
         df = pd.read_sql("""
         SELECT timestamp, station, pm25, wind_speed, wind_deg,
                temp, humidity, hour, day_of_week, month
         FROM measurements
         ORDER BY timestamp
+        LIMIT 3000
         """, conn)
     return df
 

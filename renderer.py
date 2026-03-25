@@ -112,6 +112,7 @@ def render(particles, df, wind, alerts=None, forecast_frames=None,
         {
             "step":    f["step"],
             "minutes": f["minutes"],
+            "hours":   f.get("hours", 0),
             "avg_aqi": f["avg_aqi"],
             "label":   f["label"],
             "color":   f["color"],

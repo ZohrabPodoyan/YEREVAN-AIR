@@ -39,6 +39,9 @@ INLINE_KEYBOARD = {
             {"text": "🌬 Weather", "callback_data": "weather"},
             {"text": "ℹ️ Help",    "callback_data": "help"},
         ],
+        [
+            {"text": "🗺 View Live Map", "url": "http://your-server-ip:5000"}
+        ]
     ]
 }
 
@@ -301,15 +304,4 @@ def start():
     threading.Thread(target=_polling_loop,        daemon=True).start()
     threading.Thread(target=_morning_digest_loop, daemon=True).start()
     print("  [Telegram] bot started — polling for commands")
-    # Remove old reply keyboard
-    requests.post(
-        f"{TELEGRAM_API}/sendMessage",
-        json={
-            "chat_id":      config.TELEGRAM_CHAT_ID,
-            "text":         "🚀 <b>Yerevan Air bot started!</b>\nUse the buttons below.",
-            "parse_mode":   "HTML",
-            "reply_markup": {"remove_keyboard": True},
-        },
-        timeout=10,
-    )
-    send_message("🚀 <b>Yerevan Air bot started!</b>\nUse the buttons below.")
+    send_message("🚀 <b>Yerevan Air bot started!</b>\nHistorical data loaded. Use the buttons below.")

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from database import DB_PATH
 
 
-def get_recent_avg(minutes: int = 30) -> float:
+def get_recent_avg(minutes: int = 70) -> float:
     """Average PM2.5 for the last N minutes."""
     from database import init_db
     init_db()
@@ -60,7 +60,7 @@ def detect_anomalies(df, wind: dict) -> list[dict]:
     """
     anomalies = []
 
-    recent   = get_recent_avg(30)
+    recent   = get_recent_avg(70)
     baseline = get_baseline_avg(24)
 
     if baseline < 1:

@@ -5,6 +5,7 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime, timedelta
 from database import DB_PATH
+from aqi import pm25_to_aqi
 
 DISTRICT_STATIONS = {
     "Arabkir":          ["Arabkir", "Urartu", "Aytsemnik"],
@@ -64,8 +65,3 @@ def get_district_ranking() -> list[dict]:
     # Sort from cleanest to dirtiest
     ranking.sort(key=lambda x: x["pm25"])
     return ranking
-
-
-def pm25_to_aqi(pm25: float):
-    from aqi import pm25_to_aqi as _fn
-    return _fn(pm25)

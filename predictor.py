@@ -2,7 +2,7 @@
 predictor.py — LSTM prediction of PM2.5 for 24 hours ahead.
 
 Architecture:
-  Input:  last SEQ_LEN steps (default 24 = 2 hours)
+  Input:  last SEQ_LEN steps (default 24 = 24 hours)
   Features:  pm25, wind_speed, wind_sin, wind_cos, temp, humidity,
              hour_sin, hour_cos, day_of_week_sin, day_of_week_cos
   Output: pm25 after HORIZONS steps
@@ -22,15 +22,15 @@ from aqi import pm25_to_aqi
 MODEL_DIR = Path(__file__).parent / "models"
 MODEL_DIR.mkdir(exist_ok=True)
 
-SEQ_LEN  = 24   # input sequence length (24 steps = 2 hours)
+SEQ_LEN  = 24   # input sequence length (24 steps = 24 hours)
 MIN_ROWS = 100  # minimum records for first training
 
 HORIZONS = {
-    "1h":  12,
-    "3h":  36,
-    "6h":  72,
-    "12h": 144,
-    "24h": 288,
+    "1h":  1,
+    "3h":  3,
+    "6h":  6,
+    "12h": 12,
+    "24h": 24,
 }
 
 FEATURE_COLS = [
@@ -83,8 +83,7 @@ def _build_features(df_raw: pd.DataFrame) -> pd.DataFrame:
         hour=("hour",       "first"),
         day_of_week=("day_of_week", "first"),
     ).reset_index().sort_values("timestamp")
-
-    _scaler.fit(agg["pm25"])
+    # Scaler fitting moved to train() to prevent leak during prediction
 
     agg["pm25_norm"]       = agg["pm25"].apply(_scaler.norm_pm25)
     agg["wind_speed_norm"] = agg["wind_speed"] / 20.0
@@ -107,7 +106,7 @@ def _make_sequences(features: pd.DataFrame, horizon_steps: int):
     arr = features[FEATURE_COLS].values
     pm25_norm = features["pm25_norm"].values
 
-    for i in range(len(arr) - SEQ_LEN - horizon_steps):
+    for i in range(len(arr) - SEQ_LEN - horizon_steps + 1):
         X.append(arr[i : i + SEQ_LEN])
         y.append(pm25_norm[i + SEQ_LEN + horizon_steps - 1])
 
@@ -224,6 +223,9 @@ def train(df_raw: pd.DataFrame):
         return
 
     print(f"  [LSTM] Строим фичи из {len(df_raw)} записей...")
+    # Fit the global scaler only during training
+    _scaler.fit(df_raw["pm25"])
+    
     features = _build_features(df_raw)
 
     if len(features) < SEQ_LEN + 20:
@@ -303,8 +305,8 @@ def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]:
 
         results.append({
             "horizon":    name,
-            "minutes":    steps * 5,
-            "hours":      round(steps * 5 / 60, 1),
+            "minutes":    steps * 60,
+            "hours":      round(float(steps), 1),
             "pm25":       round(pred_pm25, 1),
             "pm25_lo":    round(max(0, pred_pm25 - pred_std), 1),
             "pm25_hi":    round(pred_pm25 + pred_std, 1),

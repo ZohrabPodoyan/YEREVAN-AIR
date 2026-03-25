@@ -29,7 +29,7 @@ PARAM_MAP = {
 }
 
 
-def _search_locations_bbox(lat: float, lon: float, delta: float = 0.3) -> list[dict]:
+def _search_locations_bbox(session: requests.Session, lat: float, lon: float, delta: float = 0.3) -> list[dict]:
     """
     GET /v3/locations?bbox=minLon,minLat,maxLon,maxLat
     delta=0.3° ≈ 33 km — covers all Yerevan.
@@ -37,9 +37,8 @@ def _search_locations_bbox(lat: float, lon: float, delta: float = 0.3) -> list[d
     """
     bbox = f"{lon-delta},{lat-delta},{lon+delta},{lat+delta}"
     try:
-        r = requests.get(
+        r = session.get(
             f"{OPENAQ_BASE}/locations",
-            headers=OPENAQ_HEADERS,
             params={"bbox": bbox, "limit": 50},
             timeout=15,
         )
@@ -72,7 +71,7 @@ def _search_locations_bbox(lat: float, lon: float, delta: float = 0.3) -> list[d
         return []
 
 
-def _fetch_latest(location_id: int, sensor_params: dict) -> dict:
+def _fetch_latest(session: requests.Session, location_id: int, sensor_params: dict) -> dict:
     """
     GET /v3/locations/{id}/latest
     Returns results[i].sensorsId + results[i].value — NO parameter.name!
@@ -80,9 +79,8 @@ def _fetch_latest(location_id: int, sensor_params: dict) -> dict:
     """
     data = {"pm25": 0.0, "pm10": 0.0, "no2": 0.0, "o3": 0.0}
     try:
-        r = requests.get(
+        r = session.get(
             f"{OPENAQ_BASE}/locations/{location_id}/latest",
-            headers=OPENAQ_HEADERS,
             timeout=15,
         )
         r.raise_for_status()
@@ -97,12 +95,11 @@ def _fetch_latest(location_id: int, sensor_params: dict) -> dict:
     return data
 
 
-def _fetch_location_info(location_id: int) -> dict | None:
+def _fetch_location_info(session: requests.Session, location_id: int) -> dict | None:
     """GET /v3/locations/{id} — for hardcoded IDs when bbox is empty."""
     try:
-        r = requests.get(
+        r = session.get(
             f"{OPENAQ_BASE}/locations/{location_id}",
-            headers=OPENAQ_HEADERS,
             timeout=15,
         )
         r.raise_for_status()
@@ -132,12 +129,15 @@ def _fetch_location_info(location_id: int) -> dict | None:
 
 
 def fetch_air_data() -> pd.DataFrame:
-    locations = _search_locations_bbox(config.LAT_CENTER, config.LON_CENTER)
+    session = requests.Session()
+    session.headers.update(OPENAQ_HEADERS)
+
+    locations = _search_locations_bbox(session, config.LAT_CENTER, config.LON_CENTER)
 
     if not locations:
         print("  [OpenAQ] bbox empty → hardcoded Yerevan IDs")
         for loc_id in config.YEREVAN_STATION_IDS:
-            info = _fetch_location_info(loc_id)
+            info = _fetch_location_info(session, loc_id)
             if info:
                 locations.append(info)
 
@@ -145,7 +145,7 @@ def fetch_air_data() -> pd.DataFrame:
     seen_names = set()
 
     for loc in locations[:50]:
-        m = _fetch_latest(loc["id"], loc["sensor_params"])
+        m = _fetch_latest(session, loc["id"], loc["sensor_params"]) 
 
         if m["pm25"] == 0.0 and m["pm10"] == 0.0:
             print(f"  [OpenAQ] {loc['name'][:40]} — no PM data, skipping")
@@ -176,8 +176,9 @@ def fetch_air_data() -> pd.DataFrame:
 
 def fetch_wind_data() -> dict:
     """OWM — wind + temperature for Yerevan center."""
+    session = requests.Session()
     try:
-        r = requests.get(
+        r = session.get(
             "http://api.openweathermap.org/data/2.5/weather",
             params={"lat": config.LAT_CENTER, "lon": config.LON_CENTER, "appid": config.OWM_KEY},
             timeout=10,

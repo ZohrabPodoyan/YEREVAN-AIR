@@ -27,8 +27,10 @@ def wind_displacement(speed_ms: float, direction_deg: float, dt_sec: float) -> t
     """
     dist_m   = speed_ms * dt_sec
     move_rad = np.radians(direction_deg + 180.0)   # where particles fly
-    d_lat = dist_m * np.cos(move_rad) / 111_000
-    d_lon = dist_m * np.sin(move_rad) / (111_000 * np.cos(np.radians(config.LAT_CENTER)))
+    
+    # 111,320 meters is more precise for 1 degree of latitude
+    d_lat = dist_m * np.cos(move_rad) / 111320
+    d_lon = dist_m * np.sin(move_rad) / (111320 * np.cos(np.radians(config.LAT_CENTER)))
     return float(d_lat), float(d_lon)
 
 
@@ -37,13 +39,10 @@ def get_terrain_factor(lat: float, lon: float) -> float:
     Returns pollution stagnation factor:
     • Yerevan center (Kentron, Shengavit) — lowlands → factor 1.2 (live longer)
     • Northeastern districts (Avan, Nor-Nork) — higher → factor 0.7 (disperse faster)
-    • Western districts — average → factor 1.0
     """
-    # Simplified model: distance from center + direction
-    # Yerevan: center ~40.179°N, 44.513°E
-    d_lat = abs(lat - config.LAT_CENTER)
-    d_lon = abs(lon - config.LON_CENTER)
-
+    # Stagnation Thresholds: 
+    # Lower latitude = lower elevation in Yerevan's geography.
+    
     # Southern and central districts — lowlands
     if lat < config.LAT_CENTER + 0.02:
         return 1.2
@@ -76,26 +75,29 @@ def get_turbulence(lat: float, lon: float, t: float) -> tuple:
 def step_particles(particles: list, d_lat: float, d_lon: float, step_time: float = None) -> list:
     """
     Moves and decays all existing particles by one step.
-    step_time — for turbulence; if not passed, use current time.
     """
-    if step_time is None:
-        step_time = time.time()
+    t = step_time if step_time is not None else time.time()
     new = []
+    
+    # Pre-calculate base decay to save CPU cycles in the loop
+    base_decay = config.DECAY
+
     for p in particles:
-        # Turbulence
-        turb_lat, turb_lon = get_turbulence(p["lat"], p["lon"], step_time)
+        turb_lat, turb_lon = get_turbulence(p["lat"], p["lon"], t)
 
-        # Terrain factor affects decay
-        terrain_factor = get_terrain_factor(p["lat"], p["lon"])
-        decay = config.DECAY ** terrain_factor  # slower decay in lowlands
+        # Slower decay in lowlands: if factor > 1, exponent < 1, 
+        # making the result closer to 1.0 (slower decay)
+        actual_decay = base_decay ** (1.0 / get_terrain_factor(p["lat"], p["lon"]))
 
-        new_val = p["value"] * decay
+        new_val = p["value"] * actual_decay
+        
+        # Optimization: prune invisible particles early
         if new_val < 0.5:
             continue
 
         new.append({
-            "lat":   p["lat"]   + d_lat + turb_lat,
-            "lon":   p["lon"]   + d_lon + turb_lon,
+            "lat":   p["lat"] + d_lat + turb_lat,
+            "lon":   p["lon"] + d_lon + turb_lon,
             "value": new_val,
         })
     return new
