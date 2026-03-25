@@ -1,5 +1,5 @@
 """
-core.py — Common simulation logic for main.py and server.py
+core.py - Common simulation logic for main.py and server.py
 """
 from fetcher import fetch_air_data, fetch_wind_data
 from physics import wind_displacement, step_particles, emit_particles, trim_particles

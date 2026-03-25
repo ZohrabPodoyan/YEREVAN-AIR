@@ -1,8 +1,8 @@
 """
-physics.py — Pollution dispersion physics by wind
+physics.py - Pollution dispersion physics by wind
 With additions:
-  • Perlin noise for turbulence (cinematic smoke effect)
-  • Mountain terrain: slowdown and stagnation in lowlands
+  - Perlin noise for turbulence (cinematic smoke effect)
+  - Mountain terrain: slowdown and stagnation in lowlands
 """
 
 import time
@@ -24,7 +24,7 @@ def wind_displacement(speed_ms: float, direction_deg: float, dt_sec: float) -> t
     """
     Meteorological direction: 270° = wind FROM west → particles fly TO east.
     Returns (d_lat, d_lon) in degrees.
-    """
+    """ 
     dist_m   = speed_ms * dt_sec
     move_rad = np.radians(direction_deg + 180.0)   # where particles fly
     
@@ -37,16 +37,16 @@ def wind_displacement(speed_ms: float, direction_deg: float, dt_sec: float) -> t
 def get_terrain_factor(lat: float, lon: float) -> float:
     """
     Returns pollution stagnation factor:
-    • Yerevan center (Kentron, Shengavit) — lowlands → factor 1.2 (live longer)
-    • Northeastern districts (Avan, Nor-Nork) — higher → factor 0.7 (disperse faster)
+    - Yerevan center (Kentron, Shengavit) - lowlands -> factor 1.2 (live longer)
+    - Northeastern districts (Avan, Nor-Nork) - higher -> factor 0.7 (disperse faster)
     """
     # Stagnation Thresholds: 
     # Lower latitude = lower elevation in Yerevan's geography.
     
-    # Southern and central districts — lowlands
+    # Southern and central districts - lowlands
     if lat < config.LAT_CENTER + 0.02:
         return 1.2
-    # Northern districts — higher
+    # Northern districts - higher
     elif lat > config.LAT_CENTER + 0.04:
         return 0.7
     else:
@@ -57,7 +57,7 @@ def get_turbulence(lat: float, lon: float, t: float) -> tuple:
     """
     Returns (d_lat_turb, d_lon_turb) — turbulent displacement based on Perlin noise.
     t — time (can use simulation step or random seed).
-    """
+    """ 
     if not _has_perlin:
         # fallback: random scatter
         return (
@@ -75,7 +75,7 @@ def get_turbulence(lat: float, lon: float, t: float) -> tuple:
 def step_particles(particles: list, d_lat: float, d_lon: float, step_time: float = None) -> list:
     """
     Moves and decays all existing particles by one step.
-    """
+    """ 
     t = step_time if step_time is not None else time.time()
     new = []
     
@@ -85,7 +85,7 @@ def step_particles(particles: list, d_lat: float, d_lon: float, step_time: float
     for p in particles:
         turb_lat, turb_lon = get_turbulence(p["lat"], p["lon"], t)
 
-        # Slower decay in lowlands: if factor > 1, exponent < 1, 
+        # Slower decay in lowlands: if factor > 1, exponent < 1,
         # making the result closer to 1.0 (slower decay)
         actual_decay = base_decay ** (1.0 / get_terrain_factor(p["lat"], p["lon"]))
 
@@ -106,7 +106,7 @@ def step_particles(particles: list, d_lat: float, d_lon: float, step_time: float
 def emit_particles(df) -> list:
     """
     Adds new particles from each station.
-    Particle value = AQI (0–500).
+    Particle value = AQI (0-500).
     """
     from aqi import pm25_to_aqi
     new = []

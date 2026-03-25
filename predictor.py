@@ -83,7 +83,7 @@ def _build_features(df_raw: pd.DataFrame) -> pd.DataFrame:
         hour=("hour",       "first"),
         day_of_week=("day_of_week", "first"),
     ).reset_index().sort_values("timestamp")
-    # Scaler fitting moved to train() to prevent leak during prediction
+    # Scaler fitting is moved to train() to prevent data leakage during prediction
 
     agg["pm25_norm"]       = agg["pm25"].apply(_scaler.norm_pm25)
     agg["wind_speed_norm"] = agg["wind_speed"] / 20.0
@@ -101,11 +101,11 @@ def _build_features(df_raw: pd.DataFrame) -> pd.DataFrame:
 
 
 def _make_sequences(features: pd.DataFrame, horizon_steps: int):
-    """Нарезает временной ряд на (X, y) последовательности."""
+    """Slices the time series into (X, y) sequences."""
     X, y = [], []
     arr = features[FEATURE_COLS].values
     pm25_norm = features["pm25_norm"].values
-
+    
     for i in range(len(arr) - SEQ_LEN - horizon_steps + 1):
         X.append(arr[i : i + SEQ_LEN])
         y.append(pm25_norm[i + SEQ_LEN + horizon_steps - 1])
@@ -126,12 +126,12 @@ def _get_torch():
 
 
 class LSTMModel:
-    """Обёртка над PyTorch LSTM."""
+    """Wrapper around PyTorch LSTM."""
 
     def __init__(self, input_size=len(FEATURE_COLS), hidden=64, layers=2, dropout=0.2):
         torch, nn = _get_torch()
         if torch is None:
-            raise ImportError("PyTorch не установлен: pip install torch")
+            raise ImportError("PyTorch is not installed: pip install torch")
 
         class _Net(nn.Module):
             def __init__(self):
@@ -212,26 +212,26 @@ class LSTMModel:
 # ══════════════════════════════════════════════
 #  Обучение
 # ══════════════════════════════════════════════
-def train(df_raw: pd.DataFrame):
+def train(df_raw: pd.DataFrame): # Training
     torch, _ = _get_torch()
     if torch is None:
-        print("  [LSTM] PyTorch не установлен: pip install torch")
+        print("  [LSTM] PyTorch is not installed: pip install torch")
         return
 
     if len(df_raw) < MIN_ROWS:
-        print(f"  [LSTM] Мало данных ({len(df_raw)} строк, нужно ≥{MIN_ROWS})")
+        print(f"  [LSTM] Not enough data ({len(df_raw)} rows, need ≥{MIN_ROWS})")
         return
 
-    print(f"  [LSTM] Строим фичи из {len(df_raw)} записей...")
+    print(f"  [LSTM] Building features from {len(df_raw)} records...")
     # Fit the global scaler only during training
     _scaler.fit(df_raw["pm25"])
     
     features = _build_features(df_raw)
 
     if len(features) < SEQ_LEN + 20:
-        print(f"  [LSTM] Недостаточно временных шагов ({len(features)})")
+        print(f"  [LSTM] Not enough time steps ({len(features)})")
         return
-
+    
     trained = 0
     for name, steps in HORIZONS.items():
         X, y = _make_sequences(features, steps)
@@ -239,19 +239,20 @@ def train(df_raw: pd.DataFrame):
             continue
 
         print(f"  [LSTM] Обучаю модель {name} ({len(X)} примеров)...")
+        # Training model {name} ({len(X)} examples)...
         model = LSTMModel()
         loss  = model.train_model(X, y, epochs=150)
         model.save(MODEL_DIR / f"lstm_{name}.pt")
         print(f"  [LSTM] {name} loss={loss:.4f} ✓")
         trained += 1
 
-    print(f"  [LSTM] Готово — {trained} моделей сохранено")
+    print(f"  [LSTM] Done — {trained} models saved")
 
 
 # ══════════════════════════════════════════════
 #  Предсказание
 # ══════════════════════════════════════════════
-def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]:
+def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]: # Prediction
     torch, _ = _get_torch()
 
     results   = []
@@ -268,7 +269,7 @@ def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]:
                 model = LSTMModel()
                 model.load(model_path)
 
-                # Последовательность для предсказания
+                # Sequence for prediction
                 seq = features[FEATURE_COLS].values[-SEQ_LEN:]
                 X   = seq[np.newaxis].astype(np.float32)
 
@@ -291,7 +292,8 @@ def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]:
                 pred_std  = pred_pm25 * 0.15
         else:
             # Физическая модель затухания как fallback
-            current = float(df_raw["pm25"].mean()) if len(df_raw) > 0 else 20.0
+            # Physical decay model as fallback
+            current = float(df_raw["pm25"].mean()) if len(df_raw) > 0 else 20.0 
             BACKGROUND_PM25 = 8.0   # фоновый уровень μg/m³ для Еревана
             pred_pm25 = max(BACKGROUND_PM25, current * (0.995 ** steps))
             pred_std  = pred_pm25 * 0.2
@@ -325,13 +327,13 @@ def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]:
 # ══════════════════════════════════════════════
 #  Сравнение prediction vs reality
 # ══════════════════════════════════════════════
-def save_prediction_for_eval(prediction: list, timestamp: str):
-    """Сохраняем предсказания чтобы потом сравнить с реальностью."""
+def save_prediction_for_eval(prediction: list, timestamp: str): # Comparing prediction vs reality
+    """Saves predictions to compare with reality later."""
     import json
     eval_path = MODEL_DIR / "predictions_log.jsonl"
     with open(eval_path, "a") as f:
         f.write(json.dumps({"ts": timestamp, "predictions": prediction}) + "\n")
-
+    
 
 def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
     """

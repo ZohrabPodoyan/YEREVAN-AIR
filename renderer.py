@@ -1,5 +1,5 @@
 """
-renderer.py — Jinja2 template renderer
+renderer.py - Jinja2 template renderer
 """
 
 import json

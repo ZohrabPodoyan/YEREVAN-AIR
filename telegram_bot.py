@@ -1,13 +1,13 @@
 """
-telegram_bot.py — Telegram bot for Yerevan Air alerts.
+telegram_bot.py - Telegram bot for Yerevan Air alerts.
  
 Features:
-  - Inline keyboard with 5 buttons (always visible)
-  - /status   — full AQI across all stations
-  - /top      — top 5 most polluted stations
-  - /best     — top 5 cleanest stations
-  - /weather  — current wind, temp, humidity
-  - /help     — command list
+  - Inline keyboard with 5 buttons (always visible) 
+  - /status - full AQI across all stations
+  - /top - top 5 most polluted stations
+  - /best - top 5 cleanest stations
+  - /weather - current wind, temp, humidity
+  - /help - command list
   - Alert on AQI threshold breach
   - Morning digest at 08:00 Yerevan time
 """
@@ -31,7 +31,7 @@ _wind_ref = [None]
 INLINE_KEYBOARD = {
     "inline_keyboard": [
         [
-            {"text": "📊 Status",  "callback_data": "status"},
+            {"text": "📊 Status", "callback_data": "status"},
             {"text": "🏭 Worst 5", "callback_data": "top"},
             {"text": "🌿 Best 5",  "callback_data": "best"},
         ],
@@ -46,7 +46,7 @@ INLINE_KEYBOARD = {
 }
 
 
-# ── Send helpers ──────────────────────────────────────────────────────────────
+# -- Send helpers --------------------------------------------------------------
 
 def send_message(text: str, chat_id: int = None) -> bool:
     try:
@@ -78,7 +78,7 @@ def answer_callback(callback_query_id: str, text: str = ""):
         pass
 
 
-# ── AQI helpers ───────────────────────────────────────────────────────────────
+# -- AQI helpers ---------------------------------------------------------------
 
 def _aqi_emoji(aqi: int) -> str:
     if aqi <= 50:
@@ -99,7 +99,7 @@ def _wind_direction(deg: float) -> str:
     return dirs[int((deg + 22.5) / 45) % 8]
 
 
-# ── Message builders ──────────────────────────────────────────────────────────
+# -- Message builders ----------------------------------------------------------
 
 def build_status_message(df) -> str:
     from aqi import pm25_to_aqi
@@ -122,7 +122,7 @@ def build_top_message(df, worst: bool = True) -> str:
     rows = sorted(
         [(row["name"], pm25_to_aqi(row["pm25"])[0], row["pm25"])
          for _, row in df.iterrows()],
-        key=lambda x: -x[1] if worst else x[1]
+        key=lambda x: -x[1] if worst else x[1] 
     )[:5]
     title = "🏭 <b>Top 5 most polluted stations</b>" if worst else "🌿 <b>Top 5 cleanest stations</b>"
     lines = [title + "\n"]
@@ -174,7 +174,7 @@ def build_digest_message(df) -> str:
     lines = [
         f"<b>☀️ Good morning! Yerevan Air digest — {now.strftime('%d.%m.%Y')}</b>\n",
         f"📊 City average AQI: <b>{avg_aqi}</b>  {_aqi_emoji(avg_aqi)}",
-    ]
+    ] 
     if worst:
         lines.append(
             f"🔴 Most polluted: <b>{worst[0][:30]}</b> — AQI {worst[1]}")
@@ -187,18 +187,18 @@ def build_digest_message(df) -> str:
 def build_help_message() -> str:
     return (
         "<b>ℹ️ Yerevan Air Bot</b>\n\n"
-        "📊 <b>Status</b>  — AQI for all stations\n"
-        "🏭 <b>Worst 5</b> — most polluted right now\n"
-        "🌿 <b>Best 5</b>  — cleanest right now\n"
-        "🌬 <b>Weather</b> — wind, temp, humidity\n\n"
+        "📊 <b>Status</b> - AQI for all stations\n"
+        "🏭 <b>Worst 5</b> - most polluted right now\n"
+        "🌿 <b>Best 5</b> - cleanest right now\n"
+        "🌬 <b>Weather</b> - wind, temp, humidity\n\n"
         "🔔 Auto alerts when AQI exceeds threshold\n"
         "☀️ Morning digest every day at 08:00\n\n"
         f"⚙️ Alert threshold: AQI {config.ALERT_THRESHOLD}\n"
         "📡 Data: OpenAQ v3 · OpenWeatherMap"
     )
 
+# -- Response dispatcher -------------------------------------------------------
 
-# ── Response dispatcher ───────────────────────────────────────────────────────
 
 def _dispatch(action: str, chat_id: int):
     loading = _df_ref[0] is None
@@ -221,7 +221,7 @@ def _dispatch(action: str, chat_id: int):
     send_message(msg, chat_id=chat_id)
 
 
-# ── Alert & digest senders ────────────────────────────────────────────────────
+# -- Alert & digest senders ----------------------------------------------------
 
 def notify_alerts(alerts: list):
     """Called from core.py when new alerts fire."""
@@ -240,7 +240,7 @@ def set_latest_wind(wind: dict):
     _wind_ref[0] = wind
 
 
-# ── Polling loop ──────────────────────────────────────────────────────────────
+# -- Polling loop --------------------------------------------------------------
 
 def _handle_updates():
     global _last_update_id
@@ -297,7 +297,7 @@ def _morning_digest_loop():
         time.sleep(60)
 
 
-# ── Startup ───────────────────────────────────────────────────────────────────
+# -- Startup -------------------------------------------------------------------
 
 def start():
     """Start bot threads. Call once at server startup."""

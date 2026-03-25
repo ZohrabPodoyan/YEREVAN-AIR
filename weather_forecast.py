@@ -1,13 +1,12 @@
 """
-weather_forecast.py — прогноз погоды и AQI на 3 дня из OWM
+weather_forecast.py - Weather and AQI forecast for 3 days from OWM
 """
 import requests
 from aqi import pm25_to_aqi
 import config
 
-
-def get_weather_forecast() -> list[dict]:
-    """OWM forecast 5 days / 3 hours → берём по одному на день."""
+def get_weather_forecast() -> list[dict]: # OWM forecast 5 days / 3 hours -> take one per day.
+    """OWM forecast 5 days / 3 hours -> take one per day."""
     try:
         r = requests.get(
             "http://api.openweathermap.org/data/2.5/forecast",
@@ -26,7 +25,7 @@ def get_weather_forecast() -> list[dict]:
             date = item["dt_txt"][:10]
             hour = int(item["dt_txt"][11:13])
             if hour != 12:
-                continue  # берём только полдень
+                continue  # Take only noon
 
             wind_speed = item.get("wind", {}).get("speed", 0)
             wind_deg   = item.get("wind", {}).get("deg", 0)
@@ -36,17 +35,17 @@ def get_weather_forecast() -> list[dict]:
             icon       = weather.get("main", "Clear")
             desc       = weather.get("description", "")
             clouds     = item.get("clouds", {}).get("all", 0)
-            rain       = item.get("rain", {}).get("3h", 0)
+            rain       = item.get("rain", {}).get("3h", 0) 
 
-            # Оценка PM2.5 на основе погоды
-            # Дождь очищает воздух, ветер рассеивает
+            # PM2.5 estimation based on weather
+            # Rain cleans the air, wind disperses
             base_pm25 = 20.0
             if rain > 0:
-                base_pm25 *= 0.5   # дождь снижает PM2.5
+                base_pm25 *= 0.5   # Rain reduces PM2.5
             if wind_speed > 5:
-                base_pm25 *= 0.7   # сильный ветер рассеивает
+                base_pm25 *= 0.7   # Strong wind disperses
             if wind_speed < 1:
-                base_pm25 *= 1.4   # штиль = застой
+                base_pm25 *= 1.4   # Calm = stagnation
             if humidity > 80:
                 base_pm25 *= 1.2   # высокая влажность
             if clouds < 20:

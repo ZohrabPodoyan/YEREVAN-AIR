@@ -1,4 +1,4 @@
-# Скопируй этот файл как config.py и вставь свои ключи
+# Copy this file as config.py and insert your keys
 
 OWM_KEY    = "YOUR_OWM_KEY_HERE"
 OPENAQ_KEY = "YOUR_OPENAQ_KEY_HERE"

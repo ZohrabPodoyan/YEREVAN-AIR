@@ -1,6 +1,6 @@
 """
-server.py — Flask сервер для деплоя.
-Симуляция в фоне, HTML отдаётся по HTTP.
+server.py - Flask server for deployment.
+Simulation in background, HTML is served via HTTP.
 """
 import threading
 import time

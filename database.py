@@ -1,10 +1,10 @@
 """
-database.py — сбор исторических данных в SQLite для обучения модели.
+database.py - Collects historical data in SQLite for model training.
 
-Таблица measurements:
-  timestamp, station_name, lat, lon,
-  pm25, pm10, no2, o3,
-  wind_speed, wind_deg, temp, humidity,
+Measurements table:
+  timestamp, station_name, lat, lon, 
+  pm25, pm10, no2, o3, 
+  wind_speed, wind_deg, temp, humidity, 
   hour, day_of_week, month
 """
 
@@ -43,7 +43,7 @@ def init_db():
 
 
 def save_measurements(df, wind: dict):
-    """Сохраняет текущие данные всех станций."""
+    """Saves current data for all stations."""
     now = datetime.now()
     rows = []
     for _, row in df.iterrows():
@@ -68,9 +68,9 @@ def save_measurements(df, wind: dict):
 
 def get_training_data():
     """
-    Возвращает данные для обучения.
-    Фича: текущие условия → таргет: pm25 через 24 часа (следующий день тот же час).
-    Используем lag: pm25_lag1h, pm25_lag3h, pm25_lag6h, pm25_lag12h, pm25_lag24h.
+    Returns data for training.
+    Feature: current conditions -> target: pm25 after 24 hours (next day same hour).
+    Using lag: pm25_lag1h, pm25_lag3h, pm25_lag6h, pm25_lag12h, pm25_lag24h.
     """
     # Limit to last 3000 rows (approx 4 months of data) to maintain performance
     with sqlite3.connect(DB_PATH) as conn:

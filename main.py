@@ -1,6 +1,6 @@
 """
-main.py — Main simulation loop
-Run: python main.py
+main.py - Main simulation loop
+Run: python main.py 
 """
 
 import time
@@ -13,17 +13,17 @@ from core import run_cycle
 
 print("╔══════════════════════════════════════════════╗")
 print("║  YEREVAN AIR POLLUTION SIMULATION  v4.0      ║")
-print("║  Air: OpenAQ v3  ·  Wind: OWM                ║")
-print("║  AQI · History · Alerts · Forecast           ║")
+print("║  Air: OpenAQ v3 - Wind: OWM                ║")
+print("║  AQI - History - Alerts - Forecast           ║")
 print("╚══════════════════════════════════════════════╝\n")
 
 particles = []
 
 # Initialize database
 init_db()
-existing = get_row_count()
+existing = get_row_count() 
 if existing >= 200:
-    print(f"  Found {existing} records → training model...")
+    print(f"  Found {existing} records - training model...")
     train(get_training_data())
 print("  DB initialized → air_data.db")
 
@@ -36,6 +36,6 @@ while True:
     with open(config.OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(html)
 
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] ✓ {config.OUTPUT_FILE}")
-    print(f"  Next update in {config.DT // 60} min...\n")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] - {config.OUTPUT_FILE}")
+    print(f"  Next update in {config.DT // 60} min...\n") 
     time.sleep(config.DT)

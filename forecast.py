@@ -1,11 +1,11 @@
 """
-forecast.py — прогноз рассеивания загрязнения на N часов вперёд.
+forecast.py - Pollution dispersion forecast for N hours ahead.
 
-Алгоритм:
-  1. Берём текущие частицы и данные ветра
-  2. Прогоняем симуляцию вперёд на FORECAST_STEPS шагов
-  3. На каждом шаге сохраняем snapshot heatmap + avg AQI
-  4. Возвращаем список кадров для JS-анимации в браузере
+Algorithm:
+  1. Take current particles and wind data
+  2. Run simulation forward for FORECAST_STEPS steps
+  3. At each step, save snapshot heatmap + avg AQI
+  4. Return list of frames for JS animation in browser
 """
 import numpy as np
 import config
@@ -26,7 +26,7 @@ def run_forecast(particles: list, df, wind: dict) -> list[dict]:
     frames = []
 
     for step in range(config.FORECAST_STEPS + 1):
-        # snapshot текущего состояния
+        # Snapshot of current state
         heat = [[p["lat"], p["lon"], p["value"]] for p in sim_particles]
         avg_val = np.mean([p["value"] for p in sim_particles]) if sim_particles else 0
         avg_aqi, label, color = pm25_to_aqi(avg_val) # avg_val here is already AQI-based from physics.py
@@ -44,7 +44,7 @@ def run_forecast(particles: list, df, wind: dict) -> list[dict]:
         if step == config.FORECAST_STEPS:
             break
 
-        # --- симулируем один шаг вперёд ---
+        # --- Simulate one step forward ---
         # Use refined physics for better accuracy in forecast
         sim_particles = step_particles(sim_particles, d_lat, d_lon, step_time=step)
         sim_particles += emit_particles(df)

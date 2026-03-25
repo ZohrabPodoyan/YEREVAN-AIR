@@ -1,16 +1,16 @@
 """
-alerts.py — алерты при превышении порога AQI
+alerts.py - Alerts when AQI threshold is exceeded
 """
 import config
 
 _last_status: dict[str, str] = {}
 
 
-def check_alerts(df) -> list[dict]:
+def check_alerts(df) -> list[dict]: 
     """
-    Возвращает новые алерты только при ПЕРЕХОДЕ через порог.
-    [{name, aqi, label, color, pm25}]
-    """
+    Returns new alerts only when crossing the threshold.
+    [{name, aqi, label, color, pm25}] 
+    """ 
     from aqi import pm25_to_aqi
     alerts = []
     for _, row in df.iterrows():
