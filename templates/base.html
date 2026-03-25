@@ -954,26 +954,23 @@ html.dark .logo span {
       <div class="logo-icon" aria-hidden="true"></div>
       YEREVAN <span>AIR</span>
     </div>
-    <div class="hstat" aria-label="Last updated">
-      UPDATED<br><b>{{timestamp}}</b>
-    </div>
-    <div class="hstat" aria-label="Particle count">
-      PARTICLES<br><b>{{particle_count}}</b>
-    </div>
-    <div class="hstat" aria-label="Wind speed">
-      WIND<br><b>{{wind_speed}} m/s</b>
-    </div>
-    <div class="hstat" aria-label="Station count">
-      STATIONS<br><b>{{station_count}}</b>
-    </div>
-    <div class="sep" aria-hidden="true"></div>
-    <button id="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme">
-      ☀ LIGHT
-    </button>
-    <div class="sep" aria-hidden="true"></div>
-    <div class="hstat hstat-aqi" aria-label="AQI index">
-      US EPA AQI INDEX<br>
-      <b style="color:{{ aqi_color | safe }}">AQI {{avg_aqi}}</b>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:var(--spacing-16)">
+      <div class="hstat" aria-label="Last updated">
+        UPDATED<br><b>{{timestamp}}</b>
+      </div>
+      <div class="hstat" aria-label="Particle count">
+        PARTICLES<br><b>{{particle_count}}</b>
+      </div>
+      <div class="hstat" aria-label="Wind speed">
+        WIND<br><b>{{wind_speed}} m/s</b>
+      </div>
+      <div class="hstat" aria-label="Station count">
+        STATIONS<br><b>{{station_count}}</b>
+      </div>
+      <div class="sep" aria-hidden="true"></div>
+      <button id="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme">
+        ☀ LIGHT MODE
+      </button>
     </div>
   </header>
 
@@ -1179,68 +1176,6 @@ const RANKING = {{ ranking_json | safe }};
 const WEATHER_FORECAST = {{ weather_forecast_json | safe }};
 const ANOMALIES        = {{ anomalies_json | safe }};
 
-// ── TRANSLITERATION ──
-// Yerevan districts mapping
-const DISTRICT_MAP = {
-  'Аджапняк': 'Ajapnyak',
-  'Арабкир': 'Arabkir',
-  'Аван': 'Avan',
-  'Давташен': 'Davtashen',
-  'Эребуни': 'Erebuni',
-  'Канакер-Зейтун': 'Kanaker-Zeytun',
-  'Кентрон': 'Kentron',
-  'Малатия-Себастия': 'Malatia-Sebastia',
-  'Норк-Мараш': 'Nork-Marash',
-  'Нор Норк': 'Nor Nork',
-  'Нубарашен': 'Nubarashen',
-  'Шенгавит': 'Shengavit',
-  'Норк': 'Nork',
-  'Арабкир': 'Arabkir'
-};
-
-function transliterateRUtoEN(text) {
-  if (!text) return '';
-  
-  // Check district map first
-  for (const [ru, en] of Object.entries(DISTRICT_MAP)) {
-    if (text.includes(ru)) {
-      return text.replace(ru, en);
-    }
-  }
-  
-  // Translate severity
-  if (text === 'ЛОКАЛЬНАЯ' || text === 'kniakhmay') return 'LOCAL';
-  
-  // Replace 'mnpla' with 'baseline'
-  text = text.replace(/mnpla/gi, 'baseline');
-  
-  const ru = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
-  const en = 'abvgdeezhziiklmnoprstufkhcchshshyieyuABVGDEEZHIIKLMNOPRSTUFKHCCHSHSHYIEYU';
-  let result = '';
-  for (let i = 0; i < text.length; i++) {
-    const idx = ru.indexOf(text[i]);
-    result += idx >= 0 ? en[idx] : text[i];
-  }
-  return result;
-}
-
-// Day names translation
-const DAY_NAMES = {
-  'Пн': 'Mon', 'Вт': 'Tue', 'Ср': 'Wed', 'Чт': 'Thu', 'Пт': 'Fri', 'Сб': 'Sat', 'Вс': 'Sun',
-  'понедельник': 'Monday', 'вторник': 'Tuesday', 'среда': 'Wednesday',
-  'четверг': 'Thursday', 'пятница': 'Friday', 'суббота': 'Saturday', 'воскресенье': 'Sunday'
-};
-
-function translateDay(text) {
-  if (!text) return '';
-  for (const [ru, en] of Object.entries(DAY_NAMES)) {
-    if (text.toLowerCase().includes(ru.toLowerCase())) {
-      return en;
-    }
-  }
-  return text;
-}
-
 // Save/load theme preference
 function loadTheme() {
   const saved = localStorage.getItem('yerevanAirTheme');
@@ -1286,7 +1221,7 @@ if (isDark) {
 }
 baseTile.addTo(map);
 
-// satellite pane — между базовой картой (200) и heatmap overlay (400)
+// satellite pane
 map.createPane('satellitePane');
 map.getPane('satellitePane').style.zIndex = 250;
 
@@ -1303,8 +1238,6 @@ SOURCES.forEach(s => {
     "></div>`,
     iconSize:[14,14], iconAnchor:[7,7]
   });
-  const stationNameEN = transliterateRUtoEN(s.name);
-  const stationLabelEN = transliterateRUtoEN(s.label);
   L.marker([s.lat, s.lon], {icon})
     .bindPopup(`
       <div class="station-popup" style="
@@ -1315,9 +1248,9 @@ SOURCES.forEach(s => {
         border:1px solid var(--border-color);
         box-shadow:var(--shadow-8);
       ">
-        <b style="font-size:12px;color:var(--neutral-darker)">${stationNameEN}</b><br>
+        <b style="font-size:12px;color:var(--neutral-darker)">${s.name}</b><br>
         <span style="color:${s.color};font-size:22px;font-weight:700">AQI ${s.aqi}</span>
-        &nbsp;<i style="color:${s.color};font-size:10px">${stationLabelEN}</i>
+        &nbsp;<i style="color:${s.color};font-size:10px">${s.label}</i>
         <hr style="border-color:var(--border-color);margin:6px 0">
         <span style="font-size:10px;color:var(--neutral-dark)">
           PM2.5 &nbsp;<b style="color:var(--neutral-darker)">${s.pm25} μg/m³</b><br>
@@ -1929,7 +1862,6 @@ function initRanking() {
 
   RANKING.forEach((d, i) => {
     const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
-    const districtName = transliterateRUtoEN(d.district);
     const card = document.createElement('div');
     card.style.cssText = `
       background:var(--neutral-light); border:1px solid var(--border-color);
@@ -1939,7 +1871,7 @@ function initRanking() {
     `;
     card.innerHTML = `
       <div style="font-size:14px;flex-shrink:0">${medal}</div>
-      <div style="flex:1;font-family:var(--font-family-mono);font-size:10px;color:var(--neutral-darker)">${districtName}</div>
+      <div style="flex:1;font-family:var(--font-family-mono);font-size:10px;color:var(--neutral-darker)">${d.district}</div>
       <div style="font-family:var(--font-family-mono);font-size:9px;color:var(--neutral-dark)">PM2.5 ${d.pm25}</div>
       <div style="font-family:var(--font-family-mono);font-size:13px;font-weight:700;color:${d.color}">${d.aqi}</div>
     `;
@@ -2015,19 +1947,15 @@ function initAnomaly() {
       background:var(--neutral-light); border:1px solid ${a.color};
       border-radius:8px; padding:10px 12px; margin-bottom:6px;
     `;
-    // Translate severity and message
-    const severityEN = transliterateRUtoEN(a.severity);
-    const messageEN = transliterateRUtoEN(a.message);
-    
     card.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span style="font-size:16px">⚠️</span>
         <span style="font-family:var(--font-family-mono);font-size:10px;color:${a.color};font-weight:700">
-          ${severityEN}
+          LOCAL
         </span>
       </div>
       <div style="font-family:var(--font-family-mono);font-size:9px;color:var(--neutral-dark);line-height:1.8">
-        ${messageEN}
+        ${a.message}
       </div>
       ${a.recent ? `
       <div style="display:flex;gap:12px;margin-top:6px;font-family:var(--font-family-mono);font-size:9px">

@@ -15,7 +15,7 @@ function pointInPolygon(point, polygon) {
 
 function getDistrictAQI(districtName) {
     if (typeof SOURCES === 'undefined' || !SOURCES || SOURCES.length === 0) {
-        return { aqi: 0, color: "#888888", label: "Нет данных", pm25: 0 };
+        return { aqi: 0, color: "#888888", label: "no data", pm25: 0 };
     }
 
     // Найти полигон района
@@ -96,7 +96,7 @@ function loadDistricts() {
   {
     "type": "Feature",
     "properties": {
-      "name": "Нубарашен"
+      "name": "Nubarashen"
     },
     "geometry": {
       "type": "Polygon",
@@ -473,7 +473,7 @@ function loadDistricts() {
   {
     "type": "Feature",
     "properties": {
-      "name": "Шенгавит"
+      "name": "Shengavit"
     },
     "geometry": {
       "type": "Polygon",
@@ -846,7 +846,7 @@ function loadDistricts() {
   {
     "type": "Feature",
     "properties": {
-      "name": "Эребуни"
+      "name": "Erebuni"
     },
     "geometry": {
       "type": "Polygon",
@@ -1331,7 +1331,7 @@ function loadDistricts() {
   {
     "type": "Feature",
     "properties": {
-      "name": "Норк-Мараш"
+      "name": "Nork-Marash"
     },
     "geometry": {
       "type": "Polygon",
@@ -1884,7 +1884,7 @@ function loadDistricts() {
   {
     "type": "Feature",
     "properties": {
-      "name": "Кентрон"
+      "name": "Kentron"
     },
     "geometry": {
       "type": "Polygon",
@@ -2245,7 +2245,7 @@ function loadDistricts() {
   {
     "type": "Feature",
     "properties": {
-      "name": "Малатия-Себастия"
+      "name": "Malatia-Sebastia"
     },
     "geometry": {
       "type": "Polygon",
@@ -2606,7 +2606,7 @@ function loadDistricts() {
   {
     "type": "Feature",
     "properties": {
-      "name": "Нор-Норк"
+      "name": "Nor Nork"
     },
     "geometry": {
       "type": "Polygon",
@@ -2983,7 +2983,7 @@ function loadDistricts() {
   {
     "type": "Feature",
     "properties": {
-      "name": "Аван"
+      "name": "Avan"
     },
     "geometry": {
       "type": "Polygon",
@@ -3616,7 +3616,7 @@ function loadDistricts() {
   {
     "type": "Feature",
     "properties": {
-      "name": "Канакер-Зейтун"
+      "name": "Kanaker-Zeytun"
     },
     "geometry": {
       "type": "Polygon",
@@ -3961,7 +3961,7 @@ function loadDistricts() {
   {
     "type": "Feature",
     "properties": {
-      "name": "Арабкир"
+      "name": "Arabkir"
     },
     "geometry": {
       "type": "Polygon",
@@ -4350,7 +4350,7 @@ function loadDistricts() {
   {
     "type": "Feature",
     "properties": {
-      "name": "Давташен"
+      "name": "Davtashen"
     },
     "geometry": {
       "type": "Polygon",
