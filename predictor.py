@@ -250,7 +250,6 @@ def train(df_raw: pd.DataFrame):
 #  Предсказание
 # ══════════════════════════════════════════════
 def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]:
-    from aqi import pm25_to_aqi
     torch, _ = _get_torch()
 
     results   = []
@@ -380,6 +379,3 @@ def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
         print(f"  [LSTM] eval error: {ex}")
 
     return results[-24:]  # last 24 points (24 days)
-
-
-from aqi import pm25_to_aqi

@@ -10,21 +10,17 @@ AQI_BREAKPOINTS = [
     (35.5,   55.4,  101,  150,  "Unhealthy for Some", "#ffa726"),
     (55.5,  150.4,  151,  200,  "Unhealthy",          "#ef5350"),
     (150.5, 250.4,  201,  300,  "Very Unhealthy",     "#ab47bc"),
-    (250.5, 500.4,  301,  500,  "Hazardous",          "#b71c1c"),
+    (250.5, 500.4,  301,  500,  "Hazardous",          "#270000"),
 ]
 
 
 def pm25_to_aqi(pm25: float) -> tuple:
-    """
-    Конвертирует концентрацию PM2.5 (μg/m³) в US EPA AQI.
-    Возвращает (aqi: int, label: str, color: str)
-    """
     pm25 = max(0.0, float(pm25))
     for c_lo, c_hi, a_lo, a_hi, label, color in AQI_BREAKPOINTS:
-        if c_lo <= pm25 <= c_hi:
+        if pm25 <= c_hi:
             aqi = (a_hi - a_lo) / (c_hi - c_lo) * (pm25 - c_lo) + a_lo
             return int(round(aqi)), label, color
-    return 500, "Hazardous", "#b71c1c"
+    return 500, "Hazardous", "#270000"
 
 
 def beaufort_scale(speed_ms: float) -> int:

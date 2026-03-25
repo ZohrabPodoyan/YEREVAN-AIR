@@ -16,7 +16,7 @@ THRESHOLDS = {
 def get_server_stats() -> dict:
     """Get current server resource usage."""
     return {
-        "cpu": round(psutil.cpu_percent(interval=1), 1),
+        "cpu": round(psutil.cpu_percent(interval=None), 1),
         "ram": round(psutil.virtual_memory().percent, 1),
         "disk": round(psutil.disk_usage('/').percent, 1),
     }
