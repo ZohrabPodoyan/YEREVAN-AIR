@@ -1,5 +1,5 @@
 """
-district_ranking.py — рейтинг районов по AQI за последние 24 часа
+district_ranking.py — District ranking by AQI for the last 24 hours
 """
 import sqlite3
 from pathlib import Path
@@ -7,23 +7,23 @@ from datetime import datetime, timedelta
 from database import DB_PATH
 
 DISTRICT_STATIONS = {
-    "Арабкир":          ["Arabkir", "Urartu", "Aytsemnik"],
-    "Кентрон":          ["Kentron", "Yerevan", "Isakov", "Dro"],
-    "Шенгавит":         ["Shengavit", "Nzhdeh", "Arshakunyats"],
-    "Давташен":         ["Davtashen"],
-    "Малатия-Себастия": ["Malatia", "Sebastia"],
-    "Нор-Норк":         ["Nor Nork", "Ulnetsi"],
-    "Эребуни":          ["Erebuni", "Artashat"],
-    "Канакер-Зейтун":   ["Kanaker", "Zeytun"],
-    "Аван":             ["Avan"],
-    "Ачапняк":          ["Achapnyak"],
-    "Норк-Мараш":       ["Nork", "Marashen"],
-    "Нубарашен":        ["Nubarashen"],
+    "Arabkir":          ["Arabkir", "Urartu", "Aytsemnik"],
+    "Kentron":          ["Kentron", "Yerevan", "Isakov", "Dro"],
+    "Shengavit":        ["Shengavit", "Nzhdeh", "Arshakunyats"],
+    "Davtashen":        ["Davtashen"],
+    "Malatia-Sebastia": ["Malatia", "Sebastia"],
+    "Nor Nork":         ["Nor Nork", "Ulnetsi"],
+    "Erebuni":          ["Erebuni", "Artashat"],
+    "Kanaker-Zeytun":   ["Kanaker", "Zeytun"],
+    "Avan":             ["Avan"],
+    "Ajapnyak":         ["Achapnyak"],
+    "Nork-Marash":      ["Nork", "Marashen"],
+    "Nubarashen":       ["Nubarashen"],
 }
 
 
 def get_district_ranking() -> list[dict]:
-    """Рейтинг районов по среднему PM2.5 за последние 24 часа."""
+    """District ranking by average PM2.5 for the last 24 hours."""
     from database import init_db
     init_db()
     since = (datetime.now() - timedelta(hours=24)).isoformat()
@@ -49,9 +49,9 @@ def get_district_ranking() -> list[dict]:
         if matched:
             avg_pm25 = round(sum(matched) / len(matched), 1)
         else:
-            continue  # нет данных — пропускаем
+            continue  # no data — skip
 
-        # AQI из PM2.5
+        # AQI from PM2.5
         aqi, label, color = pm25_to_aqi(avg_pm25)
         ranking.append({
             "district": district,
@@ -61,7 +61,7 @@ def get_district_ranking() -> list[dict]:
             "color":    color,
         })
 
-    # Сортируем от чистого к грязному
+    # Sort from cleanest to dirtiest
     ranking.sort(key=lambda x: x["pm25"])
     return ranking
 

@@ -1,6 +1,6 @@
 """
-anomaly.py — детектор аномалий PM2.5
-Если PM2.5 резко вырос — находим вероятный источник по ветру
+anomaly.py — PM2.5 anomaly detector
+If PM2.5 sharply increases — find probable source by wind direction
 """
 import sqlite3
 import numpy as np
@@ -10,7 +10,7 @@ from database import DB_PATH
 
 
 def get_recent_avg(minutes: int = 30) -> float:
-    """Средний PM2.5 за последние N минут."""
+    """Average PM2.5 for the last N minutes."""
     from database import init_db
     init_db()
     since = (datetime.now() - timedelta(minutes=minutes)).isoformat()
@@ -23,7 +23,7 @@ def get_recent_avg(minutes: int = 30) -> float:
 
 
 def get_baseline_avg(hours: int = 24) -> float:
-    """Базовый средний PM2.5 за последние N часов."""
+    """Baseline average PM2.5 for the last N hours."""
     from database import init_db
     init_db()
     since = (datetime.now() - timedelta(hours=hours)).isoformat()
@@ -38,17 +38,17 @@ def get_baseline_avg(hours: int = 24) -> float:
 
 
 def find_source_direction(wind_deg: float) -> str:
-    """Откуда дует ветер → вероятный источник загрязнения."""
+    """Wind direction → probable pollution source."""
     dirs = [
-        (0,   "севера"),
-        (45,  "северо-востока"),
-        (90,  "востока"),
-        (135, "юго-востока"),
-        (180, "юга"),
-        (225, "юго-запада"),
-        (270, "запада"),
-        (315, "северо-запада"),
-        (360, "севера"),
+        (0,   "North"),
+        (45,  "Northeast"),
+        (90,  "East"),
+        (135, "Southeast"),
+        (180, "South"),
+        (225, "Southwest"),
+        (270, "West"),
+        (315, "Northwest"),
+        (360, "North"),
     ]
     closest = min(dirs, key=lambda d: abs(d[0] - wind_deg))
     return closest[1]
@@ -56,7 +56,7 @@ def find_source_direction(wind_deg: float) -> str:
 
 def detect_anomalies(df, wind: dict) -> list[dict]:
     """
-    Возвращает список аномалий если PM2.5 резко вырос.
+    Returns list of anomalies if PM2.5 sharply increased.
     """
     anomalies = []
 
@@ -64,17 +64,17 @@ def detect_anomalies(df, wind: dict) -> list[dict]:
     baseline = get_baseline_avg(24)
 
     if baseline < 1:
-        return []  # мало данных
+        return []  # not enough data
 
     ratio = recent / baseline if baseline > 0 else 1
 
-    # Аномалия если рост > 50%
+    # Anomaly if increase > 50%
     if ratio > 1.5:
         wind_deg   = wind.get("wind_deg", 0)
         wind_speed = wind.get("wind_speed", 0)
         source_dir = find_source_direction(wind_deg)
 
-        severity = "высокая" if ratio > 2.0 else "средняя"
+        severity = "high" if ratio > 2.0 else "medium"
         color    = "#ef5350" if ratio > 2.0 else "#ffa726"
 
         anomalies.append({
@@ -88,23 +88,23 @@ def detect_anomalies(df, wind: dict) -> list[dict]:
             "wind_speed": round(wind_speed, 1),
             "source_dir": source_dir,
             "message":    (
-                f"PM2.5 вырос в {ratio:.1f}x раз. "
-                f"Ветер с {source_dir} ({wind_speed:.1f} м/с) — "
-                f"вероятный источник находится к {source_dir} от города."
+                f"PM2.5 increased {ratio:.1f}x. "
+                f"Wind from {source_dir} ({wind_speed:.1f} m/s) — "
+                f"probable source is {source_dir} of the city."
             ),
         })
 
-    # Проверка отдельных станций
+    # Check individual stations
     for _, row in df.iterrows():
         if row["pm25"] > baseline * 2.5 and row["pm25"] > 50:
             anomalies.append({
                 "type":     "station_spike",
-                "severity": "локальная",
+                "severity": "local",
                 "color":    "#ab47bc",
                 "station":  row["name"],
                 "pm25":     round(row["pm25"], 1),
                 "baseline": round(baseline, 1),
-                "message":  f"Станция {row['name'][:30]}: PM2.5={row['pm25']:.1f} (норма ~{baseline:.1f})",
+                "message":  f"Station {row['name'][:30]}: PM2.5={row['pm25']:.1f} (baseline ~{baseline:.1f})",
             })
 
     return anomalies

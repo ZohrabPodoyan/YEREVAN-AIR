@@ -33,7 +33,7 @@ function getDistrictAQI(districtName) {
         );
     }
 
-    // Если нет станций внутри — берём 3 ближайшие
+   
     if (stations.length === 0) {
         const center = SOURCES.reduce((acc, s) => {
             // Найти центр района из координат
@@ -53,7 +53,7 @@ function getDistrictAQI(districtName) {
         stations = withDist.sort((a, b) => a.dist - b.dist).slice(0, 3);
     }
 
-    // Среднее по станциям района
+  
     const avgAqi  = Math.round(stations.reduce((a, s) => a + s.aqi, 0) / stations.length);
     const avgPm25 = (stations.reduce((a, s) => a + parseFloat(s.pm25), 0) / stations.length).toFixed(1);
 

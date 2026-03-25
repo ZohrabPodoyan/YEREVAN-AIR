@@ -1,15 +1,15 @@
 """
-correlation.py — корреляция AQI с временем суток и днём недели
+correlation.py — AQI correlation with time of day and day of week
 """
 import sqlite3
 from pathlib import Path
 from database import DB_PATH
 
-DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
 def get_hourly_avg() -> list[dict]:
-    """Средний PM2.5 по часам (0-23)."""
+    """Average PM2.5 by hour (0-23)."""
 
     from database import init_db
     init_db()
@@ -29,7 +29,7 @@ def get_hourly_avg() -> list[dict]:
 
 
 def get_daily_avg() -> list[dict]:
-    """Средний PM2.5 по дням недели (0=пн, 6=вс)."""
+    """Average PM2.5 by day of week (0=Mon, 6=Sun)."""
     from database import init_db
     init_db()
     with sqlite3.connect(DB_PATH) as conn:
@@ -53,18 +53,18 @@ def get_daily_avg() -> list[dict]:
 
 
 def get_correlation_data() -> dict:
-    """Возвращает все данные корреляции."""
+    """Returns all correlation data."""
     hourly = get_hourly_avg()
     daily  = get_daily_avg()
 
-    # Пиковые часы
+    # Peak hours
     if hourly:
         worst_hour = max(hourly, key=lambda x: x["pm25"])
         best_hour  = min(hourly, key=lambda x: x["pm25"])
     else:
         worst_hour = best_hour = None
 
-    # Лучший/худший день
+    # Best/worst day
     if daily:
         worst_day = max(daily, key=lambda x: x["pm25"])
         best_day  = min(daily, key=lambda x: x["pm25"])

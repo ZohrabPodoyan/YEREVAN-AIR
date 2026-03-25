@@ -1396,18 +1396,20 @@ function initForecast() {
   const timeline = document.getElementById('fc-timeline');
   if (timeline.children.length > 0) return;
   if (!FORECAST.length) {
-    timeline.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--dim)">Нет данных</div>';
+    timeline.innerHTML = '<div style="font-family:var(--font-family-mono);font-size:10px;color:var(--neutral-dark)">No data</div>';
     return;
   }
   const maxAqi = Math.max(...FORECAST.map(f => f.avg_aqi), 1);
   FORECAST.forEach((f, i) => {
     const btn = document.createElement('div');
     btn.className = 'fc-step' + (i === 0 ? ' active' : '');
+    const aqiColor = f.color || '#00e676';  // Default to green if no color
+    const label = f.label || 'Good';
     btn.innerHTML = `
       <div class="fc-step-time">${i === 0 ? 'NOW' : '+' + f.minutes + 'm'}</div>
-      <div class="fc-step-aqi" style="color:${f.color}">${f.avg_aqi}</div>
-      <div class="fc-step-lbl" style="color:${f.color}">${f.label.split(' ')[0]}</div>
-      <div class="fc-bar" style="background:${f.color};width:${Math.round(f.avg_aqi/maxAqi*100)}%"></div>
+      <div class="fc-step-aqi" style="color:${aqiColor}">${f.avg_aqi}</div>
+      <div class="fc-step-lbl" style="color:${aqiColor}">${label.split(' ')[0]}</div>
+      <div class="fc-bar" style="background:${aqiColor};width:${Math.round(f.avg_aqi/maxAqi*100)}%"></div>
     `;
     btn.onclick = () => selectForecastStep(i);
     timeline.appendChild(btn);
@@ -1842,8 +1844,8 @@ function initCorrelation() {
     el.innerHTML = `
       PEAK HOUR &nbsp;<b style="color:#ffa726">${wh.hour}:00</b> — PM2.5 ${wh.pm25} μg/m³<br>
       CLEANEST &nbsp;&nbsp;<b style="color:#00e676">${bh.hour}:00</b> — PM2.5 ${bh.pm25} μg/m³<br>
-      WORST DAY &nbsp;<b style="color:#ffa726">${translateDay(wd.name)}</b> — PM2.5 ${wd.pm25} μg/m³<br>
-      BEST DAY &nbsp;&nbsp;<b style="color:#00e676">${translateDay(bd.name)}</b> — PM2.5 ${bd.pm25} μg/m³
+      WORST DAY &nbsp;<b style="color:#ffa726">${wd.name}</b> — PM2.5 ${wd.pm25} μg/m³<br>
+      BEST DAY &nbsp;&nbsp;<b style="color:#00e676">${bd.name}</b> — PM2.5 ${bd.pm25} μg/m³
     `;
   } else {
     el.innerHTML = 'Collecting data...';
@@ -1947,6 +1949,7 @@ function initAnomaly() {
       background:var(--neutral-light); border:1px solid ${a.color};
       border-radius:8px; padding:10px 12px; margin-bottom:6px;
     `;
+    
     card.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span style="font-size:16px">⚠️</span>
@@ -1955,7 +1958,7 @@ function initAnomaly() {
         </span>
       </div>
       <div style="font-family:var(--font-family-mono);font-size:9px;color:var(--neutral-dark);line-height:1.8">
-        ${a.message}
+        ${messageEN}
       </div>
       ${a.recent ? `
       <div style="display:flex;gap:12px;margin-top:6px;font-family:var(--font-family-mono);font-size:9px">

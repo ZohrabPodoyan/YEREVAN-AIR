@@ -1,10 +1,9 @@
 """
-core.py — общая логика симуляции для main.py и server.py
+core.py — Common simulation logic for main.py and server.py
 """
 from fetcher import fetch_air_data, fetch_wind_data
 from physics import wind_displacement, step_particles, emit_particles, trim_particles
 from renderer import render
-from history import record
 from alerts import check_alerts
 from forecast import run_forecast
 from database import init_db, save_measurements, get_training_data, get_row_count
@@ -18,8 +17,8 @@ from datetime import datetime
 
 def run_cycle(particles: list) -> tuple[list, str]:
     """
-    Один цикл симуляции.
-    Возвращает (новые частицы, html строка)
+    One simulation cycle.
+    Returns (new particles, html string)
     """
     import config
 
@@ -36,7 +35,6 @@ def run_cycle(particles: list) -> tuple[list, str]:
     save_prediction_for_eval(prediction, datetime.now().isoformat())
     vs_reality  = get_prediction_vs_reality(get_training_data())
 
-    record(df)
     new_alerts      = check_alerts(df)
     forecast_frames = run_forecast(particles, df, wind)
 

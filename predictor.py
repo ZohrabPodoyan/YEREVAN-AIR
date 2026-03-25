@@ -1,13 +1,13 @@
 """
-predictor.py — LSTM предсказание PM2.5 на 24 часа вперёд.
+predictor.py — LSTM prediction of PM2.5 for 24 hours ahead.
 
-Архитектура:
-  Вход:  последние SEQ_LEN шагов (по умолчанию 24 = 2 часа)
-  Фичи:  pm25, wind_speed, wind_sin, wind_cos, temp, humidity,
-         hour_sin, hour_cos, day_of_week_sin, day_of_week_cos
-  Выход: pm25 через HORIZONS шагов
+Architecture:
+  Input:  last SEQ_LEN steps (default 24 = 2 hours)
+  Features:  pm25, wind_speed, wind_sin, wind_cos, temp, humidity,
+             hour_sin, hour_cos, day_of_week_sin, day_of_week_cos
+  Output: pm25 after HORIZONS steps
 
-Модели сохраняются в папку models/ как .pt файлы (PyTorch).
+Models are saved to models/ folder as .pt files (PyTorch).
 """
 
 import numpy as np
@@ -22,8 +22,8 @@ from aqi import pm25_to_aqi
 MODEL_DIR = Path(__file__).parent / "models"
 MODEL_DIR.mkdir(exist_ok=True)
 
-SEQ_LEN  = 24   # длина входной последовательности (24 шага = 2 часа)
-MIN_ROWS = 100  # минимум записей для первого обучения
+SEQ_LEN  = 24   # input sequence length (24 steps = 2 hours)
+MIN_ROWS = 100  # minimum records for first training
 
 HORIZONS = {
     "1h":  12,
@@ -43,10 +43,10 @@ FEATURE_COLS = [
 
 
 # ══════════════════════════════════════════════
-#  Нормализация
+#  Normalization
 # ══════════════════════════════════════════════
 class Scaler:
-    """MinMax scaler для PM2.5 — сохраняем чтобы денормализовать предсказания."""
+    """MinMax scaler for PM2.5 — saved to denormalize predictions."""
     def __init__(self):
         self.pm25_min = 0.0
         self.pm25_max = 200.0
@@ -68,12 +68,12 @@ _scaler = Scaler()
 
 
 def _build_features(df_raw: pd.DataFrame) -> pd.DataFrame:
-    """Строит фичи из сырых данных БД."""
+    """Build features from raw DB data."""
     df = df_raw.copy()
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df = df.sort_values("timestamp")
 
-    # Усредняем по всем станциям за каждый шаг
+    # Average across all stations for each step
     agg = df.groupby("timestamp").agg(
         pm25=("pm25",       "mean"),
         wind_speed=("wind_speed", "mean"),

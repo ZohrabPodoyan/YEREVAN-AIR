@@ -1,11 +1,11 @@
 """
-fetcher.py — получение данных из двух источников:
-  • OpenAQ v3   → PM2.5, PM10, NO2, O3  (реальные станции)
-  • OWM         → скорость/направление ветра, температура, влажность
+fetcher.py — Fetch data from two sources:
+  • OpenAQ v3   → PM2.5, PM10, NO2, O3  (real stations)
+  • OWM         → wind speed/direction, temperature, humidity
 
-Баги исправлены:
-  - coordinates + radius давал 422 (order_by=distance несовместим) → используем bbox
-  - /latest не содержит parameter.name → берём sensor_id маппинг из /locations/{id}
+Bugs fixed:
+  - coordinates + radius returned 422 (order_by=distance incompatible) → use bbox
+  - /latest doesn't contain parameter.name → get sensor_id mapping from /locations/{id}
 """
 
 import time
@@ -32,8 +32,8 @@ PARAM_MAP = {
 def _search_locations_bbox(lat: float, lon: float, delta: float = 0.3) -> list[dict]:
     """
     GET /v3/locations?bbox=minLon,minLat,maxLon,maxLat
-    delta=0.3° ≈ 33 км — покрывает весь Ереван.
-    Сразу строим маппинг sensor_id → параметр из sensors[].
+    delta=0.3° ≈ 33 km — covers all Yerevan.
+    Build sensor_id → parameter mapping from sensors[].
     """
     bbox = f"{lon-delta},{lat-delta},{lon+delta},{lat+delta}"
     try:
@@ -64,7 +64,7 @@ def _search_locations_bbox(lat: float, lon: float, delta: float = 0.3) -> list[d
                 "sensor_params": sensor_params,
             })
 
-        print(f"  [OpenAQ] bbox search → найдено {len(locations)} станций")
+        print(f"  [OpenAQ] bbox search → found {len(locations)} stations")
         return locations
 
     except Exception as ex:
@@ -75,8 +75,8 @@ def _search_locations_bbox(lat: float, lon: float, delta: float = 0.3) -> list[d
 def _fetch_latest(location_id: int, sensor_params: dict) -> dict:
     """
     GET /v3/locations/{id}/latest
-    Возвращает results[i].sensorsId + results[i].value — НЕТ parameter.name!
-    Поэтому используем sensor_params маппинг полученный заранее.
+    Returns results[i].sensorsId + results[i].value — NO parameter.name!
+    Therefore use sensor_params mapping obtained earlier.
     """
     data = {"pm25": 0.0, "pm10": 0.0, "no2": 0.0, "o3": 0.0}
     try:
@@ -98,7 +98,7 @@ def _fetch_latest(location_id: int, sensor_params: dict) -> dict:
 
 
 def _fetch_location_info(location_id: int) -> dict | None:
-    """GET /v3/locations/{id} — для hardcoded IDs когда bbox пуст."""
+    """GET /v3/locations/{id} — for hardcoded IDs when bbox is empty."""
     try:
         r = requests.get(
             f"{OPENAQ_BASE}/locations/{location_id}",
@@ -135,7 +135,7 @@ def fetch_air_data() -> pd.DataFrame:
     locations = _search_locations_bbox(config.LAT_CENTER, config.LON_CENTER)
 
     if not locations:
-        print("  [OpenAQ] bbox пуст → hardcoded Yerevan IDs")
+        print("  [OpenAQ] bbox empty → hardcoded Yerevan IDs")
         for loc_id in config.YEREVAN_STATION_IDS:
             info = _fetch_location_info(loc_id)
             if info:
@@ -148,16 +148,16 @@ def fetch_air_data() -> pd.DataFrame:
         m = _fetch_latest(loc["id"], loc["sensor_params"])
 
         if m["pm25"] == 0.0 and m["pm10"] == 0.0:
-            print(f"  [OpenAQ] {loc['name'][:40]} — нет PM данных, пропускаем")
+            print(f"  [OpenAQ] {loc['name'][:40]} — no PM data, skipping")
             continue
 
         if m["pm25"] > 500.0:
-            print(f"  [OpenAQ] {loc['name'][:40]} — мусорные данные PM2.5={m['pm25']:.1f}, пропускаем")
+            print(f"  [OpenAQ] {loc['name'][:40]} — invalid data PM2.5={m['pm25']:.1f}, skipping")
             continue
 
         base_name = loc["name"][:40]
         if base_name in seen_names:
-            print(f"  [OpenAQ] {loc['name'][:40]} — дубликат, пропускаем")
+            print(f"  [OpenAQ] {loc['name'][:40]} — duplicate, skipping")
             continue
         seen_names.add(base_name)
 
@@ -167,7 +167,7 @@ def fetch_air_data() -> pd.DataFrame:
         time.sleep(1.0)
 
     if not rows:
-        print("  [OpenAQ] ⚠ нет рабочих станций → fallback данные")
+        print("  [OpenAQ] ⚠ no working stations → fallback data")
         rows = [{"name": "Yerevan (fallback)", "lat": config.LAT_CENTER, "lon": config.LON_CENTER,
                  "pm25": 20.0, "pm10": 30.0, "no2": 5.0, "o3": 60.0}]
 
@@ -175,7 +175,7 @@ def fetch_air_data() -> pd.DataFrame:
 
 
 def fetch_wind_data() -> dict:
-    """OWM — ветер + температура для центра Еревана."""
+    """OWM — wind + temperature for Yerevan center."""
     try:
         r = requests.get(
             "http://api.openweathermap.org/data/2.5/weather",
