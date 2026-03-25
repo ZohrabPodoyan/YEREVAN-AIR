@@ -7,3 +7,4 @@ folium
 opensimplex
 pytz
 psutil
+torch==2.1.0+cpu
