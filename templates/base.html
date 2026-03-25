@@ -50,7 +50,7 @@
   --aqi-sensitive: #ffa726;
   --aqi-unhealthy: #ef5350;
   --aqi-very-unhealthy: #ab47bc;
-  --aqi-hazardous: #b71c1c;
+  --aqi-hazardous: #270000;
   
   /* Typography - Fluent UI Type Scale */
   --font-family-base: 'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
@@ -1688,7 +1688,7 @@ function drawVsRealityChart() {
   if (!VS_REALITY.length) {
     ctx.fillStyle = '#3a5068'; ctx.font = '10px Space Mono,monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('Collecting data (1h+)...', W/2, H/2);
+    ctx.fillText('Collecting data (24h+)...', W/2, H/2);
     return;
   }
 
