@@ -429,7 +429,7 @@ html, body {
 }
 .fc-step.active {
   border-color: var(--theme-primary);
-  box-shadow: 0 0 0 2px var(--theme-primary-light);
+  box-shadow: 0 0 0 2px var(--theme-primary);
   background: var(--theme-primary-light);
 }
 .fc-step-time {
@@ -931,6 +931,7 @@ html.dark {
   --neutral-gray-dark: #605e5c;
   --neutral-dark: #c8c6c4;
   --neutral-darker: #f3f2f1;
+  --theme-primary-light: rgba(0, 120, 212, 0.2);
 }
 html.dark #header {
   background: var(--neutral-lightest);
@@ -940,6 +941,18 @@ html.dark .logo {
   color: var(--neutral-darker);
 }
 html.dark .logo span {
+  color: var(--neutral-dark);
+}
+html.dark .fc-step {
+  background: var(--neutral-lightest);
+  color: var(--neutral-darker);
+}
+html.dark .fc-step.active {
+  background: rgba(0, 120, 212, 0.2);
+  border-color: var(--theme-primary);
+}
+html.dark .fc-step-time,
+html.dark .fc-step-lbl {
   color: var(--neutral-dark);
 }
 </style>
@@ -1949,7 +1962,7 @@ function initAnomaly() {
       background:var(--neutral-light); border:1px solid ${a.color};
       border-radius:8px; padding:10px 12px; margin-bottom:6px;
     `;
-    
+
     card.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span style="font-size:16px">⚠️</span>
@@ -1958,7 +1971,7 @@ function initAnomaly() {
         </span>
       </div>
       <div style="font-family:var(--font-family-mono);font-size:9px;color:var(--neutral-dark);line-height:1.8">
-        ${messageEN}
+        ${a.message}
       </div>
       ${a.recent ? `
       <div style="display:flex;gap:12px;margin-top:6px;font-family:var(--font-family-mono);font-size:9px">
