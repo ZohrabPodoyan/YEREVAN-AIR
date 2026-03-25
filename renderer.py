@@ -1,5 +1,5 @@
 """
-renderer.py — Jinja2 шаблонизатор
+renderer.py — Jinja2 template renderer
 """
 
 import json
@@ -9,7 +9,6 @@ from jinja2 import Environment, FileSystemLoader
 
 from aqi import pm25_to_aqi, beaufort_scale
 import config
-from history import get_city_history
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 
@@ -96,14 +95,14 @@ def _sources_json(df) -> str:
 
 def render(particles, df, wind, alerts=None, forecast_frames=None,
            prediction=None, vs_reality=None, correlation=None,
-           ranking=None, weather_forecast=None, anomalies=None) -> str:    
+           ranking=None, weather_forecast=None, anomalies=None) -> str:
     avg_pm25 = df["pm25"].mean()
     avg_pm10 = df["pm10"].mean()
     avg_aqi, avg_label, avg_color = pm25_to_aqi(avg_pm25)
     gauge_pct = min(99, avg_aqi / 500 * 100)
 
     heat_data = [[p["lat"], p["lon"], p["value"]] for p in particles]
-    history_data = get_city_history()
+    history_data = []  # History feature removed
     alerts = alerts or []
     forecast_frames = forecast_frames or []
     prediction = prediction or []
