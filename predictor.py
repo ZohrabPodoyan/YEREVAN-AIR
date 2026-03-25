@@ -334,8 +334,8 @@ def save_prediction_for_eval(prediction: list, timestamp: str):
 
 def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
     """
-    Сравнивает прошлые предсказания с реальными данными.
-    Возвращает список точек для графика.
+    Compares past predictions with actual data (24h horizon).
+    Returns list of points for the chart.
     """
     import json
     eval_path = MODEL_DIR / "predictions_log.jsonl"
@@ -347,21 +347,21 @@ def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
 
     try:
         with open(eval_path) as f:
-            lines = f.readlines()[-50:]  # последние 50 предсказаний
+            lines = f.readlines()[-30:]  # last 30 predictions (30 days)
 
         for line in lines:
             entry = json.loads(line)
             ts    = pd.to_datetime(entry["ts"])
 
-            # Для горизонта 1h ищем реальное значение через 1h после предсказания
-            pred_1h = next((p for p in entry["predictions"] if p["horizon"] == "1h"), None)
-            if not pred_1h:
+            # For 24h horizon, look for actual value 24h after prediction
+            pred_24h = next((p for p in entry["predictions"] if p["horizon"] == "24h"), None)
+            if not pred_24h:
                 continue
 
-            target_ts = ts + pd.Timedelta(hours=1)
+            target_ts = ts + pd.Timedelta(hours=24)
             real_rows = df_raw[
-                (df_raw["timestamp"] >= target_ts - pd.Timedelta(minutes=10)) &
-                (df_raw["timestamp"] <= target_ts + pd.Timedelta(minutes=10))
+                (df_raw["timestamp"] >= target_ts - pd.Timedelta(hours=1)) &
+                (df_raw["timestamp"] <= target_ts + pd.Timedelta(hours=1))
             ]
 
             if real_rows.empty:
@@ -369,17 +369,17 @@ def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
 
             real_pm25 = float(real_rows["pm25"].mean())
             results.append({
-                "ts":          ts.strftime("%H:%M"),
-                "pred_pm25":   pred_1h["pm25"],
+                "ts":          ts.strftime("%Y-%m-%d"),  # Show date for 24h horizon
+                "pred_pm25":   pred_24h["pm25"],
                 "real_pm25":   round(real_pm25, 1),
-                "pred_aqi":    pred_1h["aqi"],
-                "real_aqi":    pm25_to_aqi(real_pm25)[0],  # uses top-level import
-                "error":       round(abs(pred_1h["pm25"] - real_pm25), 1),
+                "pred_aqi":    pred_24h["aqi"],
+                "real_aqi":    pm25_to_aqi(real_pm25)[0],
+                "error":       round(abs(pred_24h["pm25"] - real_pm25), 1),
             })
     except Exception as ex:
         print(f"  [LSTM] eval error: {ex}")
 
-    return results[-24:]  # последние 24 точки
+    return results[-24:]  # last 24 points (24 days)
 
 
 from aqi import pm25_to_aqi
