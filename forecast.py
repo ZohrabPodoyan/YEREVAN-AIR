@@ -10,7 +10,7 @@ Algorithm:
 import numpy as np
 import config
 from physics import wind_displacement, step_particles, emit_particles, trim_particles
-from aqi import pm25_to_aqi
+from aqi import pm25_to_aqi, get_aqi_category
 
 
 def run_forecast(particles: list, df, wind: dict) -> list[dict]:
@@ -28,8 +28,10 @@ def run_forecast(particles: list, df, wind: dict) -> list[dict]:
     for step in range(config.FORECAST_STEPS + 1):
         # Snapshot of current state
         heat = [[p["lat"], p["lon"], p["value"]] for p in sim_particles]
-        avg_val = np.mean([p["value"] for p in sim_particles]) if sim_particles else 0
-        avg_aqi, label, color = pm25_to_aqi(avg_val) # avg_val here is already AQI-based from physics.py
+        
+        # avg_val is already AQI-based from physics.py
+        avg_aqi = int(round(np.mean([p["value"] for p in sim_particles]))) if sim_particles else 0
+        label, color = get_aqi_category(avg_aqi)
 
         frames.append({
             "step":    step,
@@ -46,7 +48,7 @@ def run_forecast(particles: list, df, wind: dict) -> list[dict]:
 
         # --- Simulate one step forward ---
         # Use refined physics for better accuracy in forecast
-        sim_particles = step_particles(sim_particles, d_lat, d_lon, step_time=step)
+        sim_particles = step_particles(sim_particles, d_lat, d_lon)
         sim_particles += emit_particles(df)
         sim_particles = trim_particles(sim_particles)
 

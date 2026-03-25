@@ -23,6 +23,15 @@ def pm25_to_aqi(pm25: float) -> tuple:
     return 500, "Hazardous", "#270000"
 
 
+def get_aqi_category(aqi: float) -> tuple:
+    """Returns (label, color) for an existing AQI value."""
+    aqi_val = float(aqi)
+    for _, _, _, a_hi, label, color in AQI_BREAKPOINTS:
+        if aqi_val <= a_hi:
+            return label, color
+    return "Hazardous", "#270000"
+
+
 def beaufort_scale(speed_ms: float) -> int: # Wind speed (m/s) -> Beaufort number.
     """Wind speed (m/s) -> Beaufort number."""
     thresholds = [0.3, 1.6, 3.4, 5.5, 8.0, 10.8, 13.9, 17.2, 20.8, 24.5, 28.5, 32.7]

@@ -18,7 +18,7 @@ function getDistrictAQI(districtName) {
         return { aqi: 0, color: "#888888", label: "no data", pm25: 0 };
     }
 
-    // Найти полигон района
+    
     const layers = districtsLayer ? districtsLayer.getLayers() : [];
     const feature = layers.find(l => l.feature?.properties?.name === districtName);
     
@@ -27,7 +27,6 @@ function getDistrictAQI(districtName) {
 
     if (feature) {
         const coords = feature.feature.geometry.coordinates[0];
-        // Найти все станции внутри полигона
         stations = SOURCES.filter(s =>
             pointInPolygon([s.lon, s.lat], coords)
         );
@@ -36,13 +35,11 @@ function getDistrictAQI(districtName) {
    
     if (stations.length === 0) {
         const center = SOURCES.reduce((acc, s) => {
-            // Найти центр района из координат
+          
             return acc;
         }, null);
 
-        // Fallback: ближайшие по расстоянию
         const withDist = SOURCES.map(s => {
-            // Примерный центр района из feature
             if (!feature) return { ...s, dist: 999 };
             const coords = feature.feature.geometry.coordinates[0];
             const cx = coords.reduce((a, c) => a + c[0], 0) / coords.length;
@@ -63,7 +60,7 @@ function getDistrictAQI(districtName) {
     else if (avgAqi <= 150) { color = "#ffa726"; label = "Unhealthy for Some"; }
     else if (avgAqi <= 200) { color = "#ef5350"; label = "Unhealthy"; }
     else if (avgAqi <= 300) { color = "#ab47bc"; label = "Very Unhealthy"; }
-    else                    { color = "#b71c1c"; label = "Hazardous"; }
+    else                    { color = "#270000"; label = "Hazardous"; }
 
     return { aqi: avgAqi, color, label, pm25: avgPm25 };
 }
