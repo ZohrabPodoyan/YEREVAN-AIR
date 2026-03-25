@@ -12,6 +12,7 @@ from correlation import get_correlation_data
 from district_ranking import get_district_ranking
 from weather_forecast import get_weather_forecast
 from anomaly import detect_anomalies
+from server_monitor import check_server_alerts
 from datetime import datetime
 
 
@@ -36,6 +37,8 @@ def run_cycle(particles: list) -> tuple[list, str]:
     vs_reality  = get_prediction_vs_reality(get_training_data())
 
     new_alerts      = check_alerts(df)
+    server_alerts   = check_server_alerts()
+    all_alerts      = new_alerts + server_alerts
     forecast_frames = run_forecast(particles, df, wind)
 
     d_lat, d_lon = wind_displacement(wind["wind_speed"], wind["wind_deg"], config.DT)
@@ -50,7 +53,7 @@ def run_cycle(particles: list) -> tuple[list, str]:
 
     html = render(
         particles, df, wind,
-        new_alerts, forecast_frames,
+        all_alerts, forecast_frames,
         prediction, vs_reality,
         correlation, ranking,
         weather_forecast, anomalies

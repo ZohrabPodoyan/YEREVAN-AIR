@@ -6,3 +6,4 @@ scipy
 folium
 opensimplex
 pytz
+"psutil>=5.9.0" 
