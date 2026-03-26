@@ -2,13 +2,13 @@
 telegram_bot.py - Telegram bot for Yerevan Air alerts.
  
 Features:
-  - Inline keyboard with 5 buttons (always visible) 
+  - Inline keyboard with 5 buttons (always visible)
   - /status - full AQI across all stations
   - /top - top 5 most polluted stations
   - /best - top 5 cleanest stations
   - /weather - current wind, temp, humidity
   - /help - command list
-  - Alert on AQI threshold breach
+  - Alert on AQI threshold breach 
   - Morning digest at 08:00 Yerevan time
 """
 
@@ -38,15 +38,12 @@ INLINE_KEYBOARD = {
         [
             {"text": "🌬 Weather", "callback_data": "weather"},
             {"text": "ℹ️ Help",    "callback_data": "help"},
-        ],
-        [
-            {"text": "🗺 View Live Map", "url": "http://your-server-ip:5000"}
         ]
     ]
 }
 
 
-# -- Send helpers --------------------------------------------------------------
+# ── Send helpers ──────────────────────────────────────────────────────────────
 
 def send_message(text: str, chat_id: int = None) -> bool:
     try:
@@ -78,7 +75,7 @@ def answer_callback(callback_query_id: str, text: str = ""):
         pass
 
 
-# -- AQI helpers ---------------------------------------------------------------
+# ── AQI helpers ───────────────────────────────────────────────────────────────
 
 def _aqi_emoji(aqi: int) -> str:
     if aqi <= 50:
@@ -99,7 +96,7 @@ def _wind_direction(deg: float) -> str:
     return dirs[int((deg + 22.5) / 45) % 8]
 
 
-# -- Message builders ----------------------------------------------------------
+# ── Message builders ──────────────────────────────────────────────────────────
 
 def build_status_message(df) -> str:
     from aqi import pm25_to_aqi
@@ -197,7 +194,31 @@ def build_help_message() -> str:
         "📡 Data: OpenAQ v3 · OpenWeatherMap"
     )
 
-# -- Response dispatcher -------------------------------------------------------
+
+def build_debug_message() -> str:
+    """Builds a debug message with fetcher and server status."""
+    from server_monitor import get_server_stats
+    stats = get_server_stats()
+
+    df = _df_ref[0]
+    wind = _wind_ref[0]
+
+    status_air = "✅ OK" if df is not None else "❌ No Data"
+    status_wind = "✅ OK" if wind is not None else "❌ No Data"
+    station_count = len(df) if df is not None else 0
+
+    lines = [
+        "<b>🛠 Debug Status</b>",
+        f"📡 Air Fetcher: {status_air} ({station_count} stations)",
+        f"🌬 Wind Fetcher: {status_wind}",
+        "",
+        "<b>💻 Server Resources</b>",
+        f"CPU: {stats['cpu']}% | RAM: {stats['ram']}% | Disk: {stats['disk']}%",
+        f"\n🕐 {datetime.now(YEREVAN_TZ).strftime('%H:%M:%S')}"
+    ]
+    return "\n".join(lines)
+
+# ── Response dispatcher ───────────────────────────────────────────────────────
 
 
 def _dispatch(action: str, chat_id: int):
@@ -216,12 +237,14 @@ def _dispatch(action: str, chat_id: int):
             _wind_ref[0]) if _wind_ref[0] else "⏳ Loading data, try again in 30s."
     elif action == "help":
         msg = build_help_message()
+    elif action == "debug":
+        msg = build_debug_message()
     else:
         return
     send_message(msg, chat_id=chat_id)
 
 
-# -- Alert & digest senders ----------------------------------------------------
+# ── Alert & digest senders ────────────────────────────────────────────────────
 
 def notify_alerts(alerts: list):
     """Called from core.py when new alerts fire."""
@@ -240,7 +263,7 @@ def set_latest_wind(wind: dict):
     _wind_ref[0] = wind
 
 
-# -- Polling loop --------------------------------------------------------------
+# ── Polling loop ──────────────────────────────────────────────────────────────
 
 def _handle_updates():
     global _last_update_id
@@ -276,14 +299,18 @@ def _handle_updates():
                     _dispatch("weather", chat_id)
                 elif text == "/help":
                     _dispatch("help", chat_id)
+                elif text == "/debug":
+                    _dispatch("debug", chat_id)
 
     except Exception as e:
         print(f"  [Telegram] poll error: {e}")
+        time.sleep(5)  # Back off on error
 
 
 def _polling_loop():
     while True:
         _handle_updates()
+        time.sleep(1)
 
 
 def _morning_digest_loop():
@@ -297,11 +324,31 @@ def _morning_digest_loop():
         time.sleep(60)
 
 
-# -- Startup -------------------------------------------------------------------
+# ── Startup ───────────────────────────────────────────────────────────────────
 
 def start():
     """Start bot threads. Call once at server startup."""
+    if config.TELEGRAM_TOKEN == "MISSING_TOKEN":
+        print("  [Telegram] ⚠️ WARNING: TELEGRAM_TOKEN is not set. Bot will not work.")
+        return
+
     threading.Thread(target=_polling_loop,        daemon=True).start()
     threading.Thread(target=_morning_digest_loop, daemon=True).start()
     print("  [Telegram] bot started — polling for commands")
+
+    # Remove old reply keyboard and announce startup
+    try:
+        requests.post(
+            f"{TELEGRAM_API}/sendMessage",
+            json={
+                "chat_id":      config.TELEGRAM_CHAT_ID,
+                "text":         "🚀 <b>Yerevan Air bot started!</b>\nUse the buttons below.",
+                "parse_mode":   "HTML",
+                "reply_markup": {"remove_keyboard": True},
+            },
+            timeout=10,
+        )
+    except Exception as e:
+        print(f"  [Telegram] startup message failed: {e}")
+    
     send_message("🚀 <b>Yerevan Air bot started!</b>\nHistorical data loaded. Use the buttons below.")
