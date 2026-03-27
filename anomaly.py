@@ -2,19 +2,14 @@
 anomaly.py — PM2.5 anomaly detector
 If PM2.5 sharply increases — find probable source by wind direction
 """
-import sqlite3
-import numpy as np
-from pathlib import Path
 from datetime import datetime, timedelta
-from database import DB_PATH
+from database import connect_db
 
 
 def get_recent_avg(minutes: int = 70) -> float:
     """Average PM2.5 for the last N minutes."""
-    from database import init_db
-    init_db()
     since = (datetime.now() - timedelta(minutes=minutes)).isoformat()
-    with sqlite3.connect(DB_PATH) as conn:
+    with connect_db() as conn:
         row = conn.execute("""
             SELECT AVG(pm25) FROM measurements
             WHERE timestamp > ? AND pm25 > 0 AND pm25 < 500
@@ -24,11 +19,9 @@ def get_recent_avg(minutes: int = 70) -> float:
 
 def get_baseline_avg(hours: int = 24) -> float:
     """Baseline average PM2.5 for the last N hours."""
-    from database import init_db
-    init_db()
     since = (datetime.now() - timedelta(hours=hours)).isoformat()
     until = (datetime.now() - timedelta(minutes=30)).isoformat()
-    with sqlite3.connect(DB_PATH) as conn:
+    with connect_db() as conn:
         row = conn.execute("""
             SELECT AVG(pm25) FROM measurements
             WHERE timestamp > ? AND timestamp < ?

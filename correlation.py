@@ -1,9 +1,7 @@
 """
 correlation.py — AQI correlation with time of day and day of week
 """
-import sqlite3
-from pathlib import Path
-from database import DB_PATH
+from database import connect_db
 
 DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -11,9 +9,7 @@ DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 def get_hourly_avg() -> list[dict]:
     """Average PM2.5 by hour (0-23)."""
 
-    from database import init_db
-    init_db()
-    with sqlite3.connect(DB_PATH) as conn:
+    with connect_db() as conn:
         rows = conn.execute("""
             SELECT hour, AVG(pm25) as avg_pm25, COUNT(*) as cnt
             FROM measurements
@@ -30,9 +26,7 @@ def get_hourly_avg() -> list[dict]:
 
 def get_daily_avg() -> list[dict]:
     """Average PM2.5 by day of week (0=Mon, 6=Sun)."""
-    from database import init_db
-    init_db()
-    with sqlite3.connect(DB_PATH) as conn:
+    with connect_db() as conn:
         rows = conn.execute("""
             SELECT day_of_week, AVG(pm25) as avg_pm25, COUNT(*) as cnt
             FROM measurements

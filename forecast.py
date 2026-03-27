@@ -10,7 +10,7 @@ Algorithm:
 import numpy as np
 import config
 from physics import wind_displacement, step_particles, emit_particles, trim_particles
-from aqi import pm25_to_aqi, get_aqi_category
+from aqi import get_aqi_category
 
 
 def run_forecast(particles: list, df, wind: dict) -> list[dict]:

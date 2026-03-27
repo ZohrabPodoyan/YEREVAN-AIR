@@ -1,10 +1,8 @@
 """
 district_ranking.py — District ranking by AQI for the last 24 hours
 """
-import sqlite3
-from pathlib import Path
 from datetime import datetime, timedelta
-from database import DB_PATH
+from database import connect_db
 from aqi import pm25_to_aqi
 
 DISTRICT_STATIONS = {
@@ -25,11 +23,9 @@ DISTRICT_STATIONS = {
 
 def get_district_ranking() -> list[dict]:
     """District ranking by average PM2.5 for the last 24 hours."""
-    from database import init_db
-    init_db()
     since = (datetime.now() - timedelta(hours=24)).isoformat()
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with connect_db() as conn:
         rows = conn.execute("""
             SELECT station, AVG(pm25) as avg_pm25
             FROM measurements

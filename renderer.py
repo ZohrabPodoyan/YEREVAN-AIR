@@ -2,6 +2,7 @@
 renderer.py - Jinja2 template renderer
 """
 
+import html
 import json
 from datetime import datetime
 from pathlib import Path
@@ -14,67 +15,12 @@ TEMPLATE_DIR = Path(__file__).parent / "templates"
 
 env = Environment(
     loader=FileSystemLoader(TEMPLATE_DIR),
-    autoescape=False,
+    autoescape=True,
 )
 
 
-def _station_cards(df) -> str:
-    html = ""
-    for _, row in df.iterrows():
-        aqi, label, color = pm25_to_aqi(row["pm25"])
-        name = row["name"]
-        short = (name[:24] + "…") if len(name) > 24 else name
-        html += (
-            f'<div class="dist-card">'
-            f'<div class="dist-dot" style="background:{color};box-shadow:0 0 6px {color}"></div>'
-            f'<div class="dist-name" title="{name}">{short}</div>'
-            f'<div class="dist-aqi" style="color:{color}">{aqi}</div>'
-            f'</div>'
-        )
-    return html
-
-
-def _pollutant_bars(df) -> str:
-    pollutants = [
-        ("PM2.5", df["pm25"].mean(), 250,  "#00d4ff"),
-        ("PM10 ", df["pm10"].mean(), 430,  "#7ecfff"),
-        ("NO₂  ", df["no2"].mean(),  200,  "#ffa726"),
-        ("O₃   ", df["o3"].mean(),   240,  "#69f0ae"),
-    ]
-    html = ""
-    for name, val, maxv, color in pollutants:
-        if val == 0.0:
-            continue
-        pct = min(100, val / maxv * 100) if maxv else 0
-        html += (
-            f'<div class="mini-bar-row">'
-            f'<div class="mini-bar-label">{name}</div>'
-            f'<div class="mini-bar-track">'
-            f'<div class="mini-bar-fill" style="width:{pct:.1f}%;background:{color}"></div>'
-            f'</div>'
-            f'<div class="mini-bar-val">{val:.1f}</div>'
-            f'</div>'
-        )
-    return html
-
-
-def _ticker_items(df) -> str:
-    html = ""
-    for _, row in df.iterrows():
-        aqi, label, color = pm25_to_aqi(row["pm25"])
-        html += (
-            f'<div class="ticker-item">'
-            f'<div class="ticker-dot" style="background:{color}"></div>'
-            f'<span>{row["name"].upper()} &nbsp; '
-            f'AQI <b style="color:{color}">{aqi}</b> &nbsp; '
-            f'PM2.5 {row["pm25"]:.1f}μg/m³ &nbsp; '
-            f'PM10 {row["pm10"]:.1f}μg/m³'
-            f'</span></div>'
-        )
-    return html
-
-
-def _sources_json(df) -> str:
+def _prepare_stations(df):
+    """Prepare station data for the template."""
     sources = []
     for _, row in df.iterrows():
         aqi, label, color = pm25_to_aqi(row["pm25"])
@@ -90,7 +36,74 @@ def _sources_json(df) -> str:
             "no2":   f"{row['no2']:.1f}",
             "o3":    f"{row['o3']:.1f}",
         })
-    return json.dumps(sources)
+    return sources
+
+
+def _build_station_cards_html(sources: list) -> str:
+    if not sources:
+        return '<div class="dist-card" role="status">No station data</div>'
+    parts = []
+    for s in sources:
+        name = html.escape(str(s["name"])[:48])
+        col = html.escape(str(s["color"]))
+        parts.append(
+            f'<div class="dist-card" role="article">'
+            f'<div class="dist-dot" style="background-color:{col}"></div>'
+            f'<div class="dist-name">{name}</div>'
+            f'<div class="dist-aqi" style="color:{col}">{int(s["aqi"])}</div>'
+            f'</div>'
+        )
+    return "\n".join(parts)
+
+
+def _build_pollutant_bars_html(df) -> str:
+    """Average pollutant mini-bars (μg/m³ scale heuristics for bar width)."""
+    if df is None or len(df) == 0:
+        return '<div class="mini-bar-row"><span class="mini-bar-label">—</span></div>'
+    avg = df[["pm25", "pm10", "no2", "o3"]].mean()
+    scales = {"pm25": 200.0, "pm10": 400.0, "no2": 200.0, "o3": 200.0}
+    labels = {"pm25": "PM2.5", "pm10": "PM10", "no2": "NO₂", "o3": "O₃"}
+    parts = []
+    for key in ["pm25", "pm10", "no2", "o3"]:
+        val = float(avg.get(key, 0) or 0)
+        pct = min(100.0, 100.0 * val / max(scales[key], 1e-6))
+        parts.append(
+            f'<div class="mini-bar-row">'
+            f'<span class="mini-bar-label">{labels[key]}</span>'
+            f'<div class="mini-bar-track"><div class="mini-bar-fill" '
+            f'style="width:{pct:.1f}%;background:var(--theme-primary)"></div></div>'
+            f'<span class="mini-bar-val">{val:.1f}</span>'
+            f'</div>'
+        )
+    return "".join(parts)
+
+
+def _build_ticker_html(sources: list, alerts: list) -> str:
+    items = []
+    for a in (alerts or [])[:6]:
+        msg = html.escape(str(a.get("message", a.get("name", "Alert")))[:100])
+        items.append(
+            f'<span class="ticker-item">'
+            f'<span class="ticker-dot" style="background:var(--error)"></span> {msg}'
+            f'</span>'
+        )
+    for s in (sources or [])[:14]:
+        nm = html.escape(str(s["name"])[:36])
+        col = html.escape(str(s["color"]))
+        items.append(
+            f'<span class="ticker-item">'
+            f'<span class="ticker-dot" style="background:{col}"></span> '
+            f'{nm} · AQI {int(s["aqi"])}'
+            f'</span>'
+        )
+    if not items:
+        items.append(
+            '<span class="ticker-item">'
+            '<span class="ticker-dot" style="background:var(--theme-primary)"></span> '
+            'Yerevan Air — live monitoring'
+            '</span>'
+        )
+    return "".join(items)
 
 
 def render(particles, df, wind, alerts=None, forecast_frames=None,
@@ -102,7 +115,7 @@ def render(particles, df, wind, alerts=None, forecast_frames=None,
     gauge_pct = min(99, avg_aqi / 500 * 100)
 
     heat_data = [[p["lat"], p["lon"], p["value"]] for p in particles]
-    history_data = []  # History feature removed
+    history_data = []
     alerts = alerts or []
     forecast_frames = forecast_frames or []
     prediction = prediction or []
@@ -120,6 +133,11 @@ def render(particles, df, wind, alerts=None, forecast_frames=None,
         }
         for f in forecast_frames
     ]
+
+    stations = _prepare_stations(df)
+    station_cards = _build_station_cards_html(stations)
+    pollutant_bars = _build_pollutant_bars_html(df)
+    ticker_items = _build_ticker_html(stations, alerts)
 
     template = env.get_template("base.html")
 
@@ -142,11 +160,11 @@ def render(particles, df, wind, alerts=None, forecast_frames=None,
         gauge_pct        = f"{gauge_pct:.1f}",
         lat_center       = config.LAT_CENTER,
         lon_center       = config.LON_CENTER,
-        station_cards    = _station_cards(df),
-        pollutant_bars   = _pollutant_bars(df),
-        ticker_items     = _ticker_items(df),
+        station_cards    = station_cards,
+        pollutant_bars   = pollutant_bars,
+        ticker_items     = ticker_items,
         heat_json        = json.dumps(heat_data),
-        sources_json     = _sources_json(df),
+        sources_json     = json.dumps(stations),
         history_json     = json.dumps(history_data),
         alerts_json      = json.dumps(alerts),
         forecast_json    = json.dumps(forecast_js),

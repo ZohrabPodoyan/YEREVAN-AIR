@@ -272,9 +272,11 @@ def _handle_updates():
             f"{TELEGRAM_API}/getUpdates",
             params={"offset": _last_update_id + 1, "timeout": 30},
             timeout=35,
-        ).json()
+        )
+        r.raise_for_status()
+        data = r.json()
 
-        for update in r.get("result", []):
+        for update in data.get("result", []):
             _last_update_id = update["update_id"]
 
             # Inline button tap

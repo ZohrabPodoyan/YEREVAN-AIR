@@ -8,11 +8,16 @@ Bugs fixed:
   - /latest doesn't contain parameter.name → get sensor_id mapping from /locations/{id}
 """
 
+import logging
 import time
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import pandas as pd
 
 import config
+
+logger = logging.getLogger(__name__)
 
 OPENAQ_BASE    = "https://api.openaq.org/v3"
 OPENAQ_HEADERS = {
@@ -27,6 +32,20 @@ PARAM_MAP = {
     "no2":   "no2",
     "o3":    "o3",
 }
+
+
+def _http_session() -> requests.Session:
+    s = requests.Session()
+    retries = Retry(
+        total=3,
+        backoff_factor=0.4,
+        status_forcelist=(502, 503, 504),
+        allowed_methods=("GET", "POST"),
+    )
+    adapter = HTTPAdapter(max_retries=retries)
+    s.mount("https://", adapter)
+    s.mount("http://", adapter)
+    return s
 
 
 def _search_locations_bbox(session: requests.Session, lat: float, lon: float, delta: float = 0.3) -> list[dict]:
@@ -53,7 +72,7 @@ def _search_locations_bbox(session: requests.Session, lat: float, lon: float, de
                 param_name = (s.get("parameter") or {}).get("name", "").lower()
                 key = PARAM_MAP.get(param_name.replace(".", ""))
                 if key:
-                    sensor_params[s["id"]] = key  # sensor_id → "pm25" / "pm10" / ...
+                    sensor_params[s["id"]] = key
 
             locations.append({
                 "id":            item["id"],
@@ -63,11 +82,11 @@ def _search_locations_bbox(session: requests.Session, lat: float, lon: float, de
                 "sensor_params": sensor_params,
             })
 
-        print(f"  [OpenAQ] bbox search → found {len(locations)} stations")
+        logger.info("OpenAQ bbox search → found %s stations", len(locations))
         return locations
 
     except Exception as ex:
-        print(f"  [OpenAQ] bbox search error: {ex}")
+        logger.warning("OpenAQ bbox search error: %s", ex)
         return []
 
 
@@ -91,7 +110,7 @@ def _fetch_latest(session: requests.Session, location_id: int, sensor_params: di
             if key and value is not None and float(value) >= 0:
                 data[key] = float(value)
     except Exception as ex:
-        print(f"  [OpenAQ] latest({location_id}) error: {ex}")
+        logger.warning("OpenAQ latest(%s) error: %s", location_id, ex)
     return data
 
 
@@ -124,18 +143,18 @@ def _fetch_location_info(session: requests.Session, location_id: int) -> dict | 
             "sensor_params": sensor_params,
         }
     except Exception as ex:
-        print(f"  [OpenAQ] info({location_id}) error: {ex}")
+        logger.warning("OpenAQ info(%s) error: %s", location_id, ex)
         return None
 
 
 def fetch_air_data() -> pd.DataFrame:
-    session = requests.Session()
+    session = _http_session()
     session.headers.update(OPENAQ_HEADERS)
 
     locations = _search_locations_bbox(session, config.LAT_CENTER, config.LON_CENTER)
 
     if not locations:
-        print("  [OpenAQ] bbox empty → hardcoded Yerevan IDs")
+        logger.info("OpenAQ bbox empty → hardcoded Yerevan IDs")
         for loc_id in config.YEREVAN_STATION_IDS:
             info = _fetch_location_info(session, loc_id)
             if info:
@@ -143,31 +162,31 @@ def fetch_air_data() -> pd.DataFrame:
 
     rows = []
     seen_names = set()
+    delay = getattr(config, "OPENAQ_STATION_DELAY_SEC", 0.0)
 
     for loc in locations[:50]:
-        m = _fetch_latest(session, loc["id"], loc["sensor_params"]) 
+        m = _fetch_latest(session, loc["id"], loc["sensor_params"])
 
         if m["pm25"] == 0.0 and m["pm10"] == 0.0:
-            print(f"  [OpenAQ] {loc['name'][:40]} — no PM data, skipping")
+            logger.debug("%s — no PM data, skipping", loc["name"][:40])
             continue
 
         if m["pm25"] > 500.0:
-            print(f"  [OpenAQ] {loc['name'][:40]} — invalid data PM2.5={m['pm25']:.1f}, skipping")
+            logger.debug("%s — invalid PM2.5=%.1f, skipping", loc["name"][:40], m["pm25"])
             continue
 
         base_name = loc["name"][:40]
         if base_name in seen_names:
-            print(f"  [OpenAQ] {loc['name'][:40]} — duplicate, skipping")
             continue
         seen_names.add(base_name)
 
         rows.append({"name": loc["name"], "lat": loc["lat"], "lon": loc["lon"], **m})
-        print(f"  [OpenAQ] ✓ {loc['name'][:35]:37s} "
-              f"PM2.5={m['pm25']:5.1f}  PM10={m['pm10']:5.1f}")
-        time.sleep(1.0)
+        logger.debug("OpenAQ ✓ %s PM2.5=%.1f PM10=%.1f", loc["name"][:35], m["pm25"], m["pm10"])
+        if delay > 0:
+            time.sleep(delay)
 
     if not rows:
-        print("  [OpenAQ] ⚠ no working stations → fallback data")
+        logger.warning("OpenAQ: no working stations → fallback data")
         rows = [{"name": "Yerevan (fallback)", "lat": config.LAT_CENTER, "lon": config.LON_CENTER,
                  "pm25": 20.0, "pm10": 30.0, "no2": 5.0, "o3": 60.0}]
 
@@ -176,19 +195,21 @@ def fetch_air_data() -> pd.DataFrame:
 
 def fetch_wind_data() -> dict:
     """OWM — wind + temperature for Yerevan center."""
-    session = requests.Session()
+    session = _http_session()
     try:
         r = session.get(
             "http://api.openweathermap.org/data/2.5/weather",
             params={"lat": config.LAT_CENTER, "lon": config.LON_CENTER, "appid": config.OWM_KEY},
             timeout=10,
-        ).json()
+        )
+        r.raise_for_status()
+        data = r.json()
         return {
-            "wind_speed": float(r.get("wind", {}).get("speed", 3.0)),
-            "wind_deg":   float(r.get("wind", {}).get("deg",   270.0)),
-            "temp":       float(r.get("main", {}).get("temp",  291.0)) - 273.15,
-            "humidity":   float(r.get("main", {}).get("humidity", 55)),
+            "wind_speed": float(data.get("wind", {}).get("speed", 3.0)),
+            "wind_deg":   float(data.get("wind", {}).get("deg",   270.0)),
+            "temp":       float(data.get("main", {}).get("temp",  291.0)) - 273.15,
+            "humidity":   float(data.get("main", {}).get("humidity", 55)),
         }
     except Exception as ex:
-        print(f"  [OWM] error: {ex} → fallback")
+        logger.warning("OWM error: %s → fallback", ex)
         return {"wind_speed": 3.0, "wind_deg": 270.0, "temp": 18.0, "humidity": 55.0}

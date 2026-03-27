@@ -2,9 +2,21 @@
 server_monitor.py — Monitor server resources (CPU, RAM, Disk)
 Send alerts when usage exceeds thresholds (80%, 90%, 95%)
 """
+import os
 import psutil
 import json
-from datetime import datetime
+
+
+def _disk_usage_percent() -> float:
+    """Disk usage for OS root (Windows vs POSIX)."""
+    try:
+        if os.name == "nt":
+            root = os.environ.get("SystemDrive", "C:") + "\\"
+        else:
+            root = "/"
+        return round(psutil.disk_usage(root).percent, 1)
+    except OSError:
+        return round(psutil.disk_usage(".").percent, 1)
 
 THRESHOLDS = {
     "warning": 80,   # Yellow alert
@@ -18,7 +30,7 @@ def get_server_stats() -> dict:
     return {
         "cpu": round(psutil.cpu_percent(interval=None), 1),
         "ram": round(psutil.virtual_memory().percent, 1),
-        "disk": round(psutil.disk_usage('/').percent, 1),
+        "disk": _disk_usage_percent(),
     }
 
 

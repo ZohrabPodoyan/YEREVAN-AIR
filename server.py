@@ -2,81 +2,124 @@
 server.py - Flask server for deployment.
 Simulation in background, HTML is served via HTTP.
 """
+import csv
+import io
+import logging
+import os
+import sqlite3
 import threading
 import time
-import os
 import traceback
+
 import config
-from flask import Flask, send_file, jsonify
+from flask import Flask, Response, jsonify, send_file, stream_with_context
 from datetime import datetime
 from pathlib import Path
 from database import init_db, get_training_data, get_row_count, DB_PATH
 from predictor import train
 from core import run_cycle
 
+def _log_level():
+    name = os.getenv("LOG_LEVEL", "INFO").upper()
+    return getattr(logging, name, logging.INFO)
+
+
+logging.basicConfig(
+    level=_log_level(),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 OUTPUT_FILE = Path(config.OUTPUT_FILE)
 
-state = {"particles": [], "last_update": None, "running": False}
+_state_lock = threading.Lock()
+state = {"particles": [], "last_update": None, "running": False, "html": None}
 
 
 def simulation_loop():
-    state["running"] = True
+    with _state_lock:
+        state["running"] = True
     init_db()
     existing = get_row_count()
     if existing >= 200:
         train(get_training_data())
 
-    from telegram_bot import start as start_bot  
-    start_bot() 
+    from telegram_bot import start as start_bot
+    start_bot()
 
     while True:
         try:
-            state["particles"], html = run_cycle(state["particles"])
+            particles, html = run_cycle(state.get("particles", []))
             OUTPUT_FILE.write_text(html, encoding="utf-8")
-            state["last_update"] = datetime.now().isoformat()
+            with _state_lock:
+                state["particles"] = particles
+                state["html"] = html
+                state["last_update"] = datetime.now().isoformat()
         except Exception as ex:
-            print(f"[ERROR] {ex}")
+            logger.exception("Simulation cycle failed: %s", ex)
             traceback.print_exc()
         time.sleep(config.DT)
 
+
 @app.route("/")
 def index():
+    with _state_lock:
+        html = state.get("html")
+    if html:
+        return html
     if OUTPUT_FILE.exists():
         return send_file(OUTPUT_FILE)
     return "<h1>Initializing... refresh in 30 seconds</h1>", 503
+
 
 @app.route('/favicon.ico')
 def favicon():
     return '', 204
 
+
 @app.route("/health")
 def health():
-    return jsonify({
-        "status":      "ok",
-        "last_update": state["last_update"],
-        "particles":   len(state["particles"]),
-    })
+    with _state_lock:
+        payload = {
+            "status":      "ok",
+            "last_update": state.get("last_update"),
+            "particles":   len(state.get("particles") or []),
+        }
+    return jsonify(payload)
+
+
+@app.route("/ready")
+def ready():
+    """Readiness: first HTML produced."""
+    with _state_lock:
+        ok = bool(state.get("html")) or OUTPUT_FILE.exists()
+    return jsonify({"ready": ok}), 200 if ok else 503
+
+
+def _csv_row_generator():
+    conn = sqlite3.connect(str(DB_PATH), timeout=60.0)
+    conn.execute("PRAGMA busy_timeout=60000")
+    try:
+        cur = conn.execute("SELECT * FROM measurements ORDER BY id")
+        cols = [d[0] for d in cur.description]
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(cols)
+        yield buf.getvalue()
+        for row in cur:
+            buf.seek(0)
+            buf.truncate(0)
+            w.writerow(row)
+            yield buf.getvalue()
+    finally:
+        conn.close()
+
 
 @app.route('/export-db')
 def export_db():
-    import sqlite3
-    import io
-    import csv
-    from flask import Response
-
-    with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.execute("SELECT * FROM measurements")
-        rows = cursor.fetchall()
-        headers = [d[0] for d in cursor.description]
-    
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(headers)
-    writer.writerows(rows)
-    
     return Response(
-        output.getvalue(),
+        stream_with_context(_csv_row_generator()),
         mimetype='text/csv',
         headers={'Content-Disposition': 'attachment; filename=air_data.csv'}
     )

@@ -10,14 +10,19 @@ Architecture:
 Models are saved to models/ folder as .pt files (PyTorch).
 """
 
+import logging
+import warnings
+
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from datetime import datetime
-import warnings
+
+import config
+from aqi import pm25_to_aqi
+
 warnings.filterwarnings("ignore")
 
-from aqi import pm25_to_aqi
+logger = logging.getLogger(__name__)
 
 MODEL_DIR = Path(__file__).parent / "models"
 MODEL_DIR.mkdir(exist_ok=True)
@@ -67,13 +72,12 @@ class Scaler:
 _scaler = Scaler()
 
 
-def _build_features(df_raw: pd.DataFrame) -> pd.DataFrame:
-    """Build features from raw DB data."""
+def _build_features(df_raw: pd.DataFrame, scaler: Scaler) -> pd.DataFrame:
+    """Build features from raw DB data using the given PM2.5 scaler."""
     df = df_raw.copy()
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df = df.sort_values("timestamp")
 
-    # Average across all stations for each step
     agg = df.groupby("timestamp").agg(
         pm25=("pm25",       "mean"),
         wind_speed=("wind_speed", "mean"),
@@ -83,9 +87,8 @@ def _build_features(df_raw: pd.DataFrame) -> pd.DataFrame:
         hour=("hour",       "first"),
         day_of_week=("day_of_week", "first"),
     ).reset_index().sort_values("timestamp")
-    # Scaler fitting is moved to train() to prevent data leakage during prediction
 
-    agg["pm25_norm"]       = agg["pm25"].apply(_scaler.norm_pm25)
+    agg["pm25_norm"]       = agg["pm25"].apply(scaler.norm_pm25)
     agg["wind_speed_norm"] = agg["wind_speed"] / 20.0
     agg["temp_norm"]       = (agg["temp"] + 30) / 70.0
     agg["humidity_norm"]   = agg["humidity"] / 100.0
@@ -105,7 +108,7 @@ def _make_sequences(features: pd.DataFrame, horizon_steps: int):
     X, y = [], []
     arr = features[FEATURE_COLS].values
     pm25_norm = features["pm25_norm"].values
-    
+
     for i in range(len(arr) - SEQ_LEN - horizon_steps + 1):
         X.append(arr[i : i + SEQ_LEN])
         y.append(pm25_norm[i + SEQ_LEN + horizon_steps - 1])
@@ -123,6 +126,20 @@ def _get_torch():
         return torch, nn
     except ImportError:
         return None, None
+
+
+def _safe_torch_load(path: Path) -> dict:
+    """Load checkpoint; prefer safe weights_only when supported."""
+    torch, _ = _get_torch()
+    if torch is None:
+        raise ImportError("PyTorch is not installed")
+    try:
+        return torch.load(path, map_location="cpu", weights_only=True)
+    except TypeError:
+        return torch.load(path, map_location="cpu")
+    except Exception:
+        logger.warning("weights_only load failed for %s, retrying with full unpickle", path)
+        return torch.load(path, map_location="cpu")
 
 
 class LSTMModel:
@@ -156,38 +173,55 @@ class LSTMModel:
 
     def train_model(self, X: np.ndarray, y: np.ndarray, epochs=100):
         torch, nn = self._torch, self._nn
-        X_t = torch.tensor(X)
-        y_t = torch.tensor(y)
+        n = len(X)
+        split = max(1, min(int(n * 0.85), n - 1))
+        X_train, y_train = X[:split], y[:split]
+        X_val, y_val = X[split:], y[split:]
+        if len(X_val) == 0:
+            X_val, y_val = X_train[-1:], y_train[-1:]
+
+        X_tr = torch.tensor(X_train)
+        y_tr = torch.tensor(y_train)
+        X_va = torch.tensor(X_val)
+        y_va = torch.tensor(y_val)
 
         optimizer = torch.optim.Adam(self.net.parameters(), lr=1e-3, weight_decay=1e-5)
         criterion = nn.MSELoss()
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10)
 
         self.net.train()
-        best_loss = float("inf")
+        best_val = float("inf")
         best_state = None
 
         for epoch in range(epochs):
+            self.net.train()
             optimizer.zero_grad()
-            pred = self.net(X_t)
-            loss = criterion(pred, y_t)
+            pred = self.net(X_tr)
+            loss = criterion(pred, y_tr)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.net.parameters(), 1.0)
             optimizer.step()
-            scheduler.step(loss)
 
-            if loss.item() < best_loss:
-                best_loss = loss.item()
+            self.net.eval()
+            with torch.no_grad():
+                pred_v = self.net(X_va)
+                val_loss = criterion(pred_v, y_va).item()
+            self.net.train()
+            scheduler.step(val_loss)
+
+            if val_loss < best_val:
+                best_val = val_loss
                 best_state = {k: v.clone() for k, v in self.net.state_dict().items()}
 
         if best_state:
             self.net.load_state_dict(best_state)
 
-        return best_loss
+        return best_val
 
-    def predict(self, X: np.ndarray) -> np.ndarray:
+    def predict(self, X: np.ndarray, eval_mode=True) -> np.ndarray:
         torch = self._torch
-        self.net.eval()
+        if eval_mode:
+            self.net.eval()
         with torch.no_grad():
             X_t = torch.tensor(X)
             return self.net(X_t).numpy()
@@ -201,84 +235,98 @@ class LSTMModel:
         }, path)
 
     def load(self, path: Path):
-        torch = self._torch
-        ckpt = torch.load(path, map_location="cpu")
+        ckpt = _safe_torch_load(path)
         self.net.load_state_dict(ckpt["state"])
         _scaler.pm25_min = ckpt["scaler_min"]
         _scaler.pm25_max = ckpt["scaler_max"]
         _scaler.fitted   = True
 
 
+def _load_scaler_from_checkpoint(path: Path) -> Scaler:
+    ckpt = _safe_torch_load(path)
+    s = Scaler()
+    s.pm25_min = float(ckpt["scaler_min"])
+    s.pm25_max = float(ckpt["scaler_max"])
+    s.fitted = True
+    return s
+
+
+def _load_model_state_only(model, path: Path) -> None:
+    ckpt = _safe_torch_load(path)
+    model.net.load_state_dict(ckpt["state"])
+
+
 # ══════════════════════════════════════════════
 #  Training
 # ══════════════════════════════════════════════
-def train(df_raw: pd.DataFrame): # Training
+def train(df_raw: pd.DataFrame):
     torch, _ = _get_torch()
     if torch is None:
-        print("  [LSTM] PyTorch is not installed: pip install torch")
+        logger.warning("PyTorch is not installed: pip install torch")
         return
 
     if len(df_raw) < MIN_ROWS:
-        print(f"  [LSTM] Not enough data ({len(df_raw)} rows, need ≥{MIN_ROWS})")
+        logger.info("Not enough data (%s rows, need ≥%s)", len(df_raw), MIN_ROWS)
         return
 
-    print(f"  [LSTM] Building features from {len(df_raw)} records...")
-    # Fit the global scaler only during training
+    logger.info("Building features from %s records...", len(df_raw))
     _scaler.fit(df_raw["pm25"])
-    
-    features = _build_features(df_raw)
+
+    features = _build_features(df_raw, _scaler)
 
     if len(features) < SEQ_LEN + 20:
-        print(f"  [LSTM] Not enough time steps ({len(features)})")
+        logger.info("Not enough time steps (%s)", len(features))
         return
-    
+
     trained = 0
     for name, steps in HORIZONS.items():
         X, y = _make_sequences(features, steps)
         if len(X) < 10:
             continue
 
-        print(f"  [LSTM] Training model {name} ({len(X)} examples)...")
+        logger.info("Training model %s (%s examples)...", name, len(X))
         model = LSTMModel()
         loss  = model.train_model(X, y, epochs=150)
         model.save(MODEL_DIR / f"lstm_{name}.pt")
-        print(f"  [LSTM] {name} loss={loss:.4f} ✓")
+        logger.info("%s val_loss=%.4f ✓", name, loss)
         trained += 1
 
-    print(f"  [LSTM] Done — {trained} models saved")
+    logger.info("Done — %s models saved", trained)
 
 
 # ══════════════════════════════════════════════
 #  Prediction
 # ══════════════════════════════════════════════
-def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]: # Prediction
+def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]:
+    _ = wind  # reserved for future conditioning on forecast weather
     torch, _ = _get_torch()
-
-    results   = []
+    results = []
     has_torch = torch is not None
-    features  = _build_features(df_raw) if len(df_raw) >= SEQ_LEN else None
+    mc_n = getattr(config, "LSTM_MC_SAMPLES", 12)
 
     for name, steps in HORIZONS.items():
         model_path = MODEL_DIR / f"lstm_{name}.pt"
         used_model = "physics"
         confidence = 0.25
 
-        if has_torch and model_path.exists() and features is not None and len(features) >= SEQ_LEN:
+        if has_torch and model_path.exists() and len(df_raw) >= SEQ_LEN:
             try:
-                model = LSTMModel()
-                model.load(model_path)
+                scaler = _load_scaler_from_checkpoint(model_path)
+                features = _build_features(df_raw, scaler)
+                if features is None or len(features) < SEQ_LEN:
+                    raise ValueError("insufficient feature rows")
 
-                # Sequence for prediction
+                model = LSTMModel()
+                _load_model_state_only(model, model_path)
+
                 seq = features[FEATURE_COLS].values[-SEQ_LEN:]
                 X   = seq[np.newaxis].astype(np.float32)
 
-                # Monte Carlo dropout for confidence interval
-                import torch.nn as nn
-                model.net.train()  # enable dropout for MC sampling
+                model.net.train()
                 preds = []
-                for _ in range(30):
-                    p = float(model.predict(X)[0])
-                    preds.append(_scaler.denorm_pm25(p))
+                for _ in range(mc_n):
+                    p = float(model.predict(X, eval_mode=False)[0])
+                    preds.append(scaler.denorm_pm25(p))
 
                 pred_pm25  = float(np.mean(preds))
                 pred_std   = float(np.std(preds))
@@ -286,13 +334,12 @@ def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]: # Prediction
                 used_model = "lstm"
 
             except Exception as ex:
-                print(f"  [LSTM] predict({name}) error: {ex}")
+                logger.warning("predict(%s) error: %s", name, ex)
                 pred_pm25 = float(df_raw["pm25"].mean() * (0.97 ** steps))
                 pred_std  = pred_pm25 * 0.15
         else:
-            # Physical decay model as fallback
             current = float(df_raw["pm25"].mean()) if len(df_raw) > 0 else 20.0
-            BACKGROUND_PM25 = 8.0   # фоновый уровень μg/m³ для Еревана
+            BACKGROUND_PM25 = 8.0
             pred_pm25 = max(BACKGROUND_PM25, current * (0.995 ** steps))
             pred_std  = pred_pm25 * 0.2
 
@@ -325,13 +372,31 @@ def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]: # Prediction
 # ══════════════════════════════════════════════
 #  Сравнение prediction vs reality
 # ══════════════════════════════════════════════
-def save_prediction_for_eval(prediction: list, timestamp: str): # Comparing prediction vs reality
+def _rotate_predictions_log_if_needed():
+    eval_path = MODEL_DIR / "predictions_log.jsonl"
+    max_b = getattr(config, "PREDICTIONS_LOG_MAX_BYTES", 5 * 1024 * 1024)
+    if not eval_path.exists():
+        return
+    try:
+        if eval_path.stat().st_size <= max_b:
+            return
+        rotated = eval_path.with_suffix(".jsonl.bak")
+        if rotated.exists():
+            rotated.unlink()
+        eval_path.rename(rotated)
+        logger.info("Rotated predictions log (size exceeded %s bytes)", max_b)
+    except OSError as e:
+        logger.warning("Could not rotate predictions log: %s", e)
+
+
+def save_prediction_for_eval(prediction: list, timestamp: str):
     """Saves predictions to compare with reality later."""
     import json
+    _rotate_predictions_log_if_needed()
     eval_path = MODEL_DIR / "predictions_log.jsonl"
-    with open(eval_path, "a") as f:
+    with open(eval_path, "a", encoding="utf-8") as f:
         f.write(json.dumps({"ts": timestamp, "predictions": prediction}) + "\n")
-    
+
 
 def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
     """
@@ -344,17 +409,17 @@ def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
         return []
 
     results = []
+    df_raw = df_raw.copy()
     df_raw["timestamp"] = pd.to_datetime(df_raw["timestamp"])
 
     try:
-        with open(eval_path) as f:
-            lines = f.readlines()[-30:]  # last 30 predictions (30 days)
+        with open(eval_path, encoding="utf-8") as f:
+            lines = f.readlines()[-200:]
 
         for line in lines:
             entry = json.loads(line)
             ts    = pd.to_datetime(entry["ts"])
 
-            # For 24h horizon, look for actual value 24h after prediction
             pred_24h = next((p for p in entry["predictions"] if p["horizon"] == "24h"), None)
             if not pred_24h:
                 continue
@@ -370,7 +435,7 @@ def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
 
             real_pm25 = float(real_rows["pm25"].mean())
             results.append({
-                "ts":          ts.strftime("%Y-%m-%d"),  # Show date for 24h horizon
+                "ts":          ts.strftime("%Y-%m-%d"),
                 "pred_pm25":   pred_24h["pm25"],
                 "real_pm25":   round(real_pm25, 1),
                 "pred_aqi":    pred_24h["aqi"],
@@ -378,6 +443,6 @@ def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
                 "error":       round(abs(pred_24h["pm25"] - real_pm25), 1),
             })
     except Exception as ex:
-        print(f"  [LSTM] eval error: {ex}")
+        logger.warning("eval error: %s", ex)
 
-    return results[-24:]  # last 24 points (24 days)
+    return results[-24:]
