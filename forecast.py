@@ -21,8 +21,12 @@ def run_forecast(particles: list, df, wind: dict) -> list[dict]:
         wind["wind_speed"], wind["wind_deg"], config.DT
     )
 
-    # Start with current particles
+    # Start with current map particles; if none (decayed / cold start), seed from stations
+    # so "NOW" matches live AQI instead of showing 0.
     sim_particles = deepcopy(particles)
+    if not sim_particles and df is not None and len(df) > 0:
+        sim_particles = emit_particles(df)
+
     frames = []
 
     for step in range(config.FORECAST_STEPS + 1):

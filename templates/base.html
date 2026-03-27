@@ -1759,9 +1759,9 @@ function drawPredInfo() {
   el.innerHTML = `
     MODEL &nbsp;&nbsp;&nbsp;&nbsp;<b style="color:${hasLSTM ? '#00e676' : '#ffee58'}">${hasLSTM ? 'LSTM ✓' : 'Physics (collecting...)'}</b><br>
     FEATURES &nbsp;pm2.5 · wind · temp · humidity · time cycles<br>
-    SEQ LEN &nbsp;&nbsp;24 steps = 2 hours history<br>
+    SEQ LEN &nbsp;&nbsp;24 hourly steps ≈ 24 h context (1 h cadence)<br>
     AVG CONF &nbsp;<b style="color:#00d4ff">${avgConf}%</b><br>
-    RETRAIN &nbsp;&nbsp;every 100 new records (~8 hours)
+    RETRAIN &nbsp;&nbsp;every 1000 DB rows (timing depends on station count)
   `;
 }
 
