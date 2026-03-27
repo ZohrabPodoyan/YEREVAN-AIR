@@ -429,6 +429,12 @@ def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
     results = []
     df_raw = df_raw.copy()
     df_raw["timestamp"] = _parse_timestamps(df_raw["timestamp"])
+    # One row per snapshot (city mean) — avoids duplicate station rows and eases time matching
+    city = (
+        df_raw.groupby("timestamp", as_index=False)
+        .agg(pm25=("pm25", "mean"))
+        .sort_values("timestamp")
+    )
 
     try:
         with open(eval_path, encoding="utf-8") as f:
@@ -443,15 +449,23 @@ def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
                 continue
 
             target_ts = ts + pd.Timedelta(hours=24)
-            real_rows = df_raw[
-                (df_raw["timestamp"] >= target_ts - pd.Timedelta(hours=1)) &
-                (df_raw["timestamp"] <= target_ts + pd.Timedelta(hours=1))
+            # ±2h: hourly cadence + clock drift between cycles
+            win_lo = target_ts - pd.Timedelta(hours=2)
+            win_hi = target_ts + pd.Timedelta(hours=2)
+            near = city[
+                (city["timestamp"] >= win_lo) & (city["timestamp"] <= win_hi)
             ]
 
-            if real_rows.empty:
-                continue
-
-            real_pm25 = float(real_rows["pm25"].mean())
+            if near.empty:
+                if city.empty:
+                    continue
+                delta = (city["timestamp"] - target_ts).abs()
+                pos = int(delta.argmin())
+                if delta.iloc[pos] > pd.Timedelta(hours=6):
+                    continue
+                real_pm25 = float(city.iloc[pos]["pm25"])
+            else:
+                real_pm25 = float(near["pm25"].mean())
             results.append({
                 "ts":          ts.strftime("%Y-%m-%d"),
                 "pred_pm25":   pred_24h["pm25"],

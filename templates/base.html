@@ -1577,13 +1577,10 @@ function toggleSatellite() {
 
 function initPrediction() {
   const cards = document.getElementById('pred-cards');
-  if (cards.children.length > 0) return;
-
-  if (!PREDICTION.length) {
-    cards.innerHTML = '<div style="font-family:var(--font-family-mono);font-size:10px;color:var(--neutral-dark);padding:8px">Collecting data...</div>';
-    return;
-  }
-
+  if (cards.children.length === 0) {
+    if (!PREDICTION.length) {
+      cards.innerHTML = '<div style="font-family:var(--font-family-mono);font-size:10px;color:var(--neutral-dark);padding:8px">Collecting data...</div>';
+    } else {
   PREDICTION.forEach(p => {
     const confPct   = Math.round(p.confidence * 100);
     const confColor = confPct > 70 ? '#00e676' : confPct > 40 ? '#ffee58' : '#ef5350';
@@ -1620,7 +1617,9 @@ function initPrediction() {
     `;
     cards.appendChild(card);
   });
-
+    }
+  }
+  // Redraw every time user opens PREDICT tab (first visit builds cards; revisit only refreshes charts)
   drawPredChart();
   drawVsRealityChart();
   drawPredInfo();
@@ -1695,7 +1694,8 @@ function drawVsRealityChart() {
   const allVals = [...VS_REALITY.map(p=>p.pred_pm25), ...VS_REALITY.map(p=>p.real_pm25)];
   const maxV = Math.max(...allVals, 35) * 1.1, minV = 0;
   const n    = VS_REALITY.length;
-  const xOf  = i => (i / (n-1)) * (W-20) + 10;
+  const denom = Math.max(n - 1, 1);
+  const xOf  = i => (i / denom) * (W-20) + 10;
   const yOf  = v => H - 16 - ((v-minV)/(maxV-minV)) * (H-24);
 
   // Predicted line (dashed)
