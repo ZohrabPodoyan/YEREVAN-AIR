@@ -65,3 +65,17 @@ def test_safe_torch_load_missing_file(tmp_path):
     p = tmp_path / "none.pt"
     with pytest.raises((FileNotFoundError, OSError)):
         _safe_torch_load(p)
+
+
+def test_parse_timestamps_mixed_iso_fraction():
+    """SQLite rows may mix ...T12:00:00 and ...T12:00:00.123456 in one column."""
+    import pandas as pd
+    from predictor import _parse_timestamps
+
+    s = pd.Series(
+        ["2026-03-27T22:39:56", "2026-03-27T22:40:00.123456", "2026-03-27T23:00:00"],
+        dtype=object,
+    )
+    out = _parse_timestamps(s)
+    assert len(out) == 3
+    assert out.notna().all()

@@ -24,6 +24,24 @@ warnings.filterwarnings("ignore")
 
 logger = logging.getLogger(__name__)
 
+
+def _parse_timestamps(series):
+    """
+    Parse timestamp column from SQLite / ISO strings. Rows may mix
+    whole-second and microsecond precision (e.g. ...T22:39:56 vs ...T22:39:56.000000),
+    which breaks a single inferred strptime format.
+    """
+    try:
+        return pd.to_datetime(series, format="ISO8601", utc=False)
+    except (TypeError, ValueError):
+        pass
+    try:
+        return pd.to_datetime(series, format="mixed", utc=False)
+    except TypeError:
+        pass
+    return pd.to_datetime(series, utc=False)
+
+
 MODEL_DIR = Path(__file__).parent / "models"
 MODEL_DIR.mkdir(exist_ok=True)
 
@@ -75,7 +93,7 @@ _scaler = Scaler()
 def _build_features(df_raw: pd.DataFrame, scaler: Scaler) -> pd.DataFrame:
     """Build features from raw DB data using the given PM2.5 scaler."""
     df = df_raw.copy()
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df["timestamp"] = _parse_timestamps(df["timestamp"])
     df = df.sort_values("timestamp")
 
     agg = df.groupby("timestamp").agg(
@@ -410,7 +428,7 @@ def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
 
     results = []
     df_raw = df_raw.copy()
-    df_raw["timestamp"] = pd.to_datetime(df_raw["timestamp"])
+    df_raw["timestamp"] = _parse_timestamps(df_raw["timestamp"])
 
     try:
         with open(eval_path, encoding="utf-8") as f:
@@ -418,7 +436,7 @@ def get_prediction_vs_reality(df_raw: pd.DataFrame) -> list[dict]:
 
         for line in lines:
             entry = json.loads(line)
-            ts    = pd.to_datetime(entry["ts"])
+            ts    = _parse_timestamps(pd.Series([entry["ts"]])).iloc[0]
 
             pred_24h = next((p for p in entry["predictions"] if p["horizon"] == "24h"), None)
             if not pred_24h:

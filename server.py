@@ -36,6 +36,28 @@ OUTPUT_FILE = Path(config.OUTPUT_FILE)
 _state_lock = threading.Lock()
 state = {"particles": [], "last_update": None, "running": False, "html": None}
 
+_bg_started = False
+_bg_lock = threading.Lock()
+
+
+def ensure_background_worker():
+    """
+    Start the simulation + Telegram loop once per process.
+    Must run under Gunicorn (not only `python server.py`). Use --workers 1 on Gunicorn
+    so only one loop runs.
+    Set YEREVAN_SKIP_BACKGROUND=1 to disable (e.g. tests importing this module).
+    """
+    global _bg_started
+    if os.getenv("YEREVAN_SKIP_BACKGROUND") == "1":
+        return
+    with _bg_lock:
+        if _bg_started:
+            return
+        _bg_started = True
+        thread = threading.Thread(target=simulation_loop, daemon=True)
+        thread.start()
+        logger.info("Background worker thread started")
+
 
 def simulation_loop():
     with _state_lock:
@@ -125,9 +147,10 @@ def export_db():
     )
 
 
-if __name__ == "__main__":
-    thread = threading.Thread(target=simulation_loop, daemon=True)
-    thread.start()
+ensure_background_worker()
 
+
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    # Dev only; production should use: gunicorn server:app --bind 0.0.0.0:$PORT --workers 1
+    app.run(host="0.0.0.0", port=port, use_reloader=False, threaded=True)
