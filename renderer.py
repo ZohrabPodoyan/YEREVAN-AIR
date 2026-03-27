@@ -140,8 +140,12 @@ def render(particles, df, wind, alerts=None, forecast_frames=None,
     ticker_items = _build_ticker_html(stations, alerts)
 
     template = env.get_template("base.html")
+    forecast_horizon_h = round(
+        config.FORECAST_STEPS * (config.DT / 3600.0), 1
+    )
 
     return template.render(
+        forecast_horizon_h = forecast_horizon_h,
         timestamp        = datetime.now().strftime("%H:%M:%S  %d.%m.%Y"),
         particle_count   = len(particles),
         station_count    = len(df),

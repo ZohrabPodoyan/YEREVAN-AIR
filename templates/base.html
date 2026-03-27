@@ -1035,7 +1035,7 @@ html.dark .fc-step-lbl {
 
     <!-- TAB: FORECAST -->
     <div class="tab-panel" id="tab-forecast" role="tabpanel" aria-label="Forecast data">
-      <div class="section-title">Dispersion Forecast (6 hour)</div>
+      <div class="section-title" id="fc-dispersion-title">Dispersion Forecast ({{ forecast_horizon_h }} h)</div>
       <div class="forecast-timeline" id="fc-timeline"></div>
       <div class="forecast-map-label" id="fc-map-label">
         ← Select forecast step above
@@ -1345,7 +1345,6 @@ const WIND_PX  = (WIND_SPEED * 0.5) + 0.8;
 const WIND_RAD = (WIND_DEG + 180) * Math.PI / 180;
 const WDX = Math.sin(WIND_RAD) * WIND_PX;
 const WDY = -Math.cos(WIND_RAD) * WIND_PX;
-;
 
 function animateWind() {
   wCtx.clearRect(0, 0, wCanvas.width, wCanvas.height);
@@ -1382,7 +1381,14 @@ function initStreaks() {
 map.whenReady(() => {
   resizeWind();
   initStreaks();
-  window.addEventListener('resize', () => { resizeWind(); initStreaks(); });
+  window.addEventListener('resize', () => {
+    resizeWind();
+    initStreaks();
+    const fcTab = document.getElementById('tab-forecast');
+    if (fcTab && fcTab.classList.contains('active') && typeof drawForecastChart === 'function') {
+      drawForecastChart();
+    }
+  });
   animateWind();
 });
 
@@ -1407,27 +1413,36 @@ let activeForecastStep = 0;
 
 function initForecast() {
   const timeline = document.getElementById('fc-timeline');
-  if (timeline.children.length > 0) return;
   if (!FORECAST.length) {
     timeline.innerHTML = '<div style="font-family:var(--font-family-mono);font-size:10px;color:var(--neutral-dark)">No data</div>';
     return;
   }
-  const maxAqi = Math.max(...FORECAST.map(f => f.avg_aqi), 1);
-  FORECAST.forEach((f, i) => {
-    const btn = document.createElement('div');
-    btn.className = 'fc-step' + (i === 0 ? ' active' : '');
-    const aqiColor = f.color || '#00e676';  // Default to green if no color
-    const label = f.label || 'Good';
-    btn.innerHTML = `
+  if (activeForecastStep >= FORECAST.length) activeForecastStep = 0;
+  const title = document.getElementById('fc-dispersion-title');
+  if (title && FORECAST.length) {
+    const last = FORECAST[FORECAST.length - 1];
+    const h = (typeof last.hours === 'number') ? last.hours : (last.minutes / 60);
+    title.textContent = 'Dispersion Forecast (' + (Math.round(h * 10) / 10) + ' h)';
+  }
+  if (timeline.children.length === 0) {
+    const maxAqi = Math.max(...FORECAST.map(f => f.avg_aqi), 1);
+    FORECAST.forEach((f, i) => {
+      const btn = document.createElement('div');
+      btn.className = 'fc-step' + (i === 0 ? ' active' : '');
+      const aqiColor = f.color || '#00e676';
+      const label = f.label || 'Good';
+      const shortLbl = label.length > 14 ? label.slice(0, 12) + '…' : label;
+      btn.innerHTML = `
       <div class="fc-step-time">${i === 0 ? 'NOW' : '+' + f.minutes + 'm'}</div>
       <div class="fc-step-aqi" style="color:${aqiColor}">${f.avg_aqi}</div>
-      <div class="fc-step-lbl" style="color:${aqiColor}">${label.split(' ')[0]}</div>
+      <div class="fc-step-lbl" style="color:${aqiColor}">${shortLbl}</div>
       <div class="fc-bar" style="background:${aqiColor};width:${Math.round(f.avg_aqi/maxAqi*100)}%"></div>
     `;
-    btn.onclick = () => selectForecastStep(i);
-    timeline.appendChild(btn);
-  });
-  selectForecastStep(0);
+      btn.onclick = () => selectForecastStep(i);
+      timeline.appendChild(btn);
+    });
+  }
+  selectForecastStep(activeForecastStep);
   drawForecastChart();
 }
 
@@ -1443,39 +1458,52 @@ function selectForecastStep(idx) {
 
 function drawForecastChart() {
   const canvas = document.getElementById('forecast-chart');
-  if (!canvas || FORECAST.length < 2) return;
+  if (!canvas || !FORECAST.length) return;
   const ctx = canvas.getContext('2d');
   const W = canvas.offsetWidth || 260, H = 80;
   canvas.width = W; canvas.height = H;
   const aqis = FORECAST.map(f => f.avg_aqi);
-  const maxV = Math.max(...aqis, 100), minV = Math.min(...aqis, 0);
+  const maxV = Math.max(...aqis, 1), minV = Math.min(...aqis, 0);
+  const span = Math.max(maxV - minV, 1e-6);
+  const n = FORECAST.length;
+  const denom = Math.max(n - 1, 1);
+  const xAt = i => (i / denom) * W;
+  const yAt = aqi => H - ((aqi - minV) / span) * (H - 12) - 4;
+
   ctx.clearRect(0, 0, W, H);
+  if (n === 1) {
+    ctx.font = '10px Space Mono,monospace';
+    ctx.fillStyle = '#3a5068';
+    ctx.textAlign = 'center';
+    ctx.fillText('AQI ' + aqis[0], W / 2, H / 2);
+    return;
+  }
+
   const grad = ctx.createLinearGradient(0, 0, 0, H);
   grad.addColorStop(0, 'rgba(0,212,255,.2)'); grad.addColorStop(1, 'rgba(0,212,255,0)');
   ctx.beginPath();
   FORECAST.forEach((f, i) => {
-    const x = (i / (FORECAST.length-1)) * W;
-    const y = H - ((f.avg_aqi - minV) / (maxV - minV + 1)) * (H-12) - 4;
+    const x = xAt(i), y = yAt(f.avg_aqi);
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
   ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
   ctx.fillStyle = grad; ctx.fill();
   FORECAST.forEach((f, i) => {
     if (i === 0) return;
-    const prev = FORECAST[i-1];
-    const x1 = ((i-1)/(FORECAST.length-1))*W, y1 = H-((prev.avg_aqi-minV)/(maxV-minV+1))*(H-12)-4;
-    const x2 = (i/(FORECAST.length-1))*W,     y2 = H-((f.avg_aqi-minV)/(maxV-minV+1))*(H-12)-4;
-    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+    const prev = FORECAST[i - 1];
+    const x1 = xAt(i - 1), y1 = yAt(prev.avg_aqi);
+    const x2 = xAt(i), y2 = yAt(f.avg_aqi);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
     ctx.strokeStyle = f.color; ctx.lineWidth = 2; ctx.stroke();
   });
   FORECAST.forEach((f, i) => {
-    const x = (i/(FORECAST.length-1))*W, y = H-((f.avg_aqi-minV)/(maxV-minV+1))*(H-12)-4;
-    ctx.beginPath(); ctx.arc(x, y, i === activeForecastStep ? 4 : 2, 0, Math.PI*2);
+    const x = xAt(i), y = yAt(f.avg_aqi);
+    ctx.beginPath(); ctx.arc(x, y, i === activeForecastStep ? 4 : 2, 0, Math.PI * 2);
     ctx.fillStyle = f.color; ctx.fill();
   });
   ctx.font = '8px Space Mono,monospace'; ctx.fillStyle = '#3a5068';
-  ctx.textAlign = 'left';  ctx.fillText('NOW', 2, H-2);
-  ctx.textAlign = 'right'; ctx.fillText('+' + FORECAST[FORECAST.length-1].minutes + 'm', W-2, H-2);
+  ctx.textAlign = 'left';  ctx.fillText('NOW', 2, H - 2);
+  ctx.textAlign = 'right'; ctx.fillText('+' + FORECAST[FORECAST.length - 1].minutes + 'm', W - 2, H - 2);
 }
 
 // ── ALERTS ──
@@ -1637,7 +1665,8 @@ function drawPredChart() {
   const maxV  = Math.max(...PREDICTION.map(p => p.pm25_hi), 50) * 1.05;
   const minV  = 0;
 
-  const xOf = i => (i / (PREDICTION.length - 1)) * (W - 20) + 10;
+  const predDenom = Math.max(PREDICTION.length - 1, 1);
+  const xOf = i => (i / predDenom) * (W - 20) + 10;
   const yOf = v => H - 16 - ((v - minV) / (maxV - minV)) * (H - 28);
 
   // AQI zone backgrounds
@@ -1816,7 +1845,7 @@ function initCorrelation() {
 
   // Daily chart
   const dCanvas = document.getElementById('daily-chart');
-  if (dCanvas && CORRELATION.daily.length > 0) {
+  if (dCanvas && CORRELATION.daily && CORRELATION.daily.length > 0) {
     const ctx = dCanvas.getContext('2d');
     const W = dCanvas.offsetWidth || 260, H = 80;
     dCanvas.width = W; dCanvas.height = H;
@@ -1848,16 +1877,20 @@ function initCorrelation() {
 
   // Insights
   const el = document.getElementById('corr-insights');
-  if (el && CORRELATION.worst_hour) {
+  if (!el) return;
+  if (CORRELATION.worst_hour && CORRELATION.best_hour) {
     const wh = CORRELATION.worst_hour;
     const bh = CORRELATION.best_hour;
     const wd = CORRELATION.worst_day;
     const bd = CORRELATION.best_day;
+    const dayLines = (wd && bd)
+      ? `WORST DAY &nbsp;<b style="color:#ffa726">${wd.name}</b> — PM2.5 ${wd.pm25} μg/m³<br>
+      BEST DAY &nbsp;&nbsp;<b style="color:#00e676">${bd.name}</b> — PM2.5 ${bd.pm25} μg/m³`
+      : '';
     el.innerHTML = `
       PEAK HOUR &nbsp;<b style="color:#ffa726">${wh.hour}:00</b> — PM2.5 ${wh.pm25} μg/m³<br>
       CLEANEST &nbsp;&nbsp;<b style="color:#00e676">${bh.hour}:00</b> — PM2.5 ${bh.pm25} μg/m³<br>
-      WORST DAY &nbsp;<b style="color:#ffa726">${wd.name}</b> — PM2.5 ${wd.pm25} μg/m³<br>
-      BEST DAY &nbsp;&nbsp;<b style="color:#00e676">${bd.name}</b> — PM2.5 ${bd.pm25} μg/m³
+      ${dayLines}
     `;
   } else {
     el.innerHTML = 'Collecting data...';
