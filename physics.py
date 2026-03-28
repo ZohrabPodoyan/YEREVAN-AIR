@@ -32,11 +32,11 @@ def wind_displacement(speed_ms: float, direction_deg: float, dt_sec: float) -> t
     
     # 4. Calculation (Assuming 0 is North and CW)
     # North/South displacement
-    d_lat = (dist_m * np.cos(move_rad)) / 111320
+    d_lat = dist_m * np.cos(move_rad) / 111320
     
     # East/West displacement (with longitude correction)
     cos_lat = np.cos(np.radians(config.LAT_CENTER))
-    d_lon = (dist_m * np.sin(move_rad)) / (111320 * cos_lat)
+    d_lon = dist_m * np.sin(move_rad) / (111320 * cos_lat)
     
     return float(d_lat), float(d_lon)
 
