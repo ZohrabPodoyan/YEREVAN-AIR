@@ -11,8 +11,8 @@ OUTPUT_FILE = "yerevan_air.html"
 DT = int(os.getenv("UPDATE_INTERVAL_SEC", "3600"))
 
 # Physics: Adjusted for 1-hour steps
-DECAY = 0.85      # More realistic: pollution persists longer in 1-hour steps
-DIFFUSION = 0.001 # Slightly reduced for more coherent plumes
+DECAY = 0.94      # More realistic: pollution persists longer in 1-hour steps
+DIFFUSION = 0.0008 # Slightly reduced for more coherent plumes
 MAX_PARTICLES = 800
 
 FORECAST_STEPS = 6  # 6 hours of visual lookahead
