@@ -405,69 +405,6 @@ html, body {
   overflow-y: auto;
 }
 
-/* Forecast steps */
-.fc-step {
-  flex-shrink: 0;
-  width: 72px;
-  background: var(--neutral-lightest);
-  border: var(--border-width) solid var(--border-color);
-  border-radius: var(--radius-medium);
-  padding: var(--spacing-8) var(--spacing-6);
-  text-align: center;
-  cursor: pointer;
-  transition: border-color var(--duration-fast), box-shadow var(--duration-fast), transform var(--duration-fast);
-  box-shadow: var(--shadow-2);
-}
-.fc-step:hover {
-  border-color: var(--theme-primary);
-  box-shadow: var(--shadow-4);
-  transform: translateY(-2px);
-}
-.fc-step:focus-visible {
-  outline: var(--focus-stroke) solid var(--focus-border);
-  outline-offset: var(--focus-stroke);
-}
-.fc-step.active {
-  border-color: var(--theme-primary);
-  box-shadow: 0 0 0 2px var(--theme-primary);
-  background: var(--theme-primary-light);
-}
-.fc-step-time {
-  font-size: var(--font-size-10);
-  color: var(--neutral-dark);
-  font-family: var(--font-family-mono);
-}
-.fc-step-aqi {
-  font-family: var(--font-family-base);
-  font-size: var(--font-size-18);
-  font-weight: var(--font-weight-bold);
-  line-height: 1.3;
-  margin: var(--spacing-2) 0;
-}
-.fc-step-lbl {
-  font-size: var(--font-size-10);
-  font-family: var(--font-family-base);
-  font-weight: var(--font-weight-semibold);
-}
-.fc-bar {
-  height: 3px;
-  border-radius: var(--radius-small);
-  margin-top: var(--spacing-4);
-  transition: width var(--duration-normal) var(--easing-default);
-}
-
-.forecast-map-label {
-  font-family: var(--font-family-base);
-  font-size: var(--font-size-12);
-  color: var(--neutral-dark);
-  text-align: center;
-  padding: var(--spacing-8) var(--spacing-12);
-  background: var(--neutral-light);
-  border: var(--border-width) solid var(--border-color);
-  border-radius: var(--radius-medium);
-}
-.forecast-map-label b { color: var(--theme-primary); }
-
 /* Alerts — Fluent Message Bar */
 #alert-container {
   position: fixed;
@@ -901,19 +838,6 @@ html.dark .map-badge b { color: var(--theme-primary-light); }
   line-height: 2;
 }
 
-/* Forecast timeline scrollbar */
-.forecast-timeline {
-  display: flex;
-  gap: var(--spacing-4);
-  overflow-x: auto;
-  padding-bottom: var(--spacing-4);
-}
-.forecast-timeline::-webkit-scrollbar { height: 4px; }
-.forecast-timeline::-webkit-scrollbar-thumb {
-  background: var(--neutral-gray);
-  border-radius: var(--radius-circle);
-}
-
 /* Separator */
 .sep {
   width: var(--border-width);
@@ -941,18 +865,6 @@ html.dark .logo {
   color: var(--neutral-darker);
 }
 html.dark .logo span {
-  color: var(--neutral-dark);
-}
-html.dark .fc-step {
-  background: var(--neutral-lightest);
-  color: var(--neutral-darker);
-}
-html.dark .fc-step.active {
-  background: rgba(0, 120, 212, 0.2);
-  border-color: var(--theme-primary);
-}
-html.dark .fc-step-time,
-html.dark .fc-step-lbl {
   color: var(--neutral-dark);
 }
 </style>
@@ -992,7 +904,6 @@ html.dark .fc-step-lbl {
     <!-- TAB BAR — Fluent Pivot -->
     <div class="tab-bar" role="tablist" aria-label="Navigation tabs">
       <button class="tab-btn active" onclick="switchTab('live')" role="tab" aria-selected="true">● LIVE</button>
-      <button class="tab-btn" onclick="switchTab('forecast')" role="tab" aria-selected="false">⟳ FORECAST</button>
       <button class="tab-btn" onclick="switchTab('prediction')" role="tab" aria-selected="false">🔮 PREDICT</button>
       <button class="tab-btn" onclick="switchTab('correlation')" role="tab" aria-selected="false">📊 STATS</button>
       <button class="tab-btn" onclick="switchTab('ranking')" role="tab" aria-selected="false">🏆 RATING</button>
@@ -1031,17 +942,6 @@ html.dark .fc-step-lbl {
       <button onclick="downloadCSV()" class="csv-btn" aria-label="Export data as CSV">
         ↓ EXPORT CSV
       </button>
-    </div>
-
-    <!-- TAB: FORECAST -->
-    <div class="tab-panel" id="tab-forecast" role="tabpanel" aria-label="Forecast data">
-      <div class="section-title" id="fc-dispersion-title">Dispersion Forecast ({{ forecast_horizon_h }} h)</div>
-      <div class="forecast-timeline" id="fc-timeline"></div>
-      <div class="forecast-map-label" id="fc-map-label">
-        ← Select forecast step above
-      </div>
-      <div class="section-title">AQI Trend</div>
-      <canvas class="chart-canvas" id="forecast-chart"></canvas>
     </div>
 
     <!-- TAB: PREDICTION -->
@@ -1181,7 +1081,6 @@ const LAT_CENTER  = {{lat_center}};
 const LON_CENTER  = {{lon_center}};
 const HISTORY     = {{ history_json | safe }};
 const ALERTS      = {{ alerts_json | safe }};
-const FORECAST    = {{ forecast_json | safe }};
 const PREDICTION  = {{ prediction_json | safe }};
 const VS_REALITY  = {{ vs_reality_json | safe }};
 const CORRELATION = {{ correlation_json | safe }};
@@ -1384,10 +1283,6 @@ map.whenReady(() => {
   window.addEventListener('resize', () => {
     resizeWind();
     initStreaks();
-    const fcTab = document.getElementById('tab-forecast');
-    if (fcTab && fcTab.classList.contains('active') && typeof drawForecastChart === 'function') {
-      drawForecastChart();
-    }
   });
   animateWind();
 });
@@ -1395,115 +1290,16 @@ map.whenReady(() => {
 // ── TABS ──
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['live','forecast','prediction','correlation','ranking','weather','anomaly'][i] === name);
+    b.classList.toggle('active', ['live','prediction','correlation','ranking','weather','anomaly'][i] === name);
   });
   document.querySelectorAll('.tab-panel').forEach(p => {
     p.classList.toggle('active', p.id === 'tab-' + name);
   });
-  if (name === 'forecast')   initForecast();
   if (name === 'prediction') initPrediction();
   if (name === 'correlation') initCorrelation();
   if (name === 'weather') initWeather();
   if (name === 'anomaly') initAnomaly();
   if (name === 'ranking') initRanking();
-}
-
-// ── FORECAST ──
-let activeForecastStep = 0;
-
-function initForecast() {
-  const timeline = document.getElementById('fc-timeline');
-  if (!FORECAST.length) {
-    timeline.innerHTML = '<div style="font-family:var(--font-family-mono);font-size:10px;color:var(--neutral-dark)">No data</div>';
-    return;
-  }
-  if (activeForecastStep >= FORECAST.length) activeForecastStep = 0;
-  const title = document.getElementById('fc-dispersion-title');
-  if (title && FORECAST.length) {
-    const last = FORECAST[FORECAST.length - 1];
-    const h = (typeof last.hours === 'number') ? last.hours : (last.minutes / 60);
-    title.textContent = 'Dispersion Forecast (' + (Math.round(h * 10) / 10) + ' h)';
-  }
-  if (timeline.children.length === 0) {
-    const maxAqi = Math.max(...FORECAST.map(f => f.avg_aqi), 1);
-    FORECAST.forEach((f, i) => {
-      const btn = document.createElement('div');
-      btn.className = 'fc-step' + (i === 0 ? ' active' : '');
-      const aqiColor = f.color || '#00e676';
-      const label = f.label || 'Good';
-      const shortLbl = label.length > 14 ? label.slice(0, 12) + '…' : label;
-      btn.innerHTML = `
-      <div class="fc-step-time">${i === 0 ? 'NOW' : '+' + f.minutes + 'm'}</div>
-      <div class="fc-step-aqi" style="color:${aqiColor}">${f.avg_aqi}</div>
-      <div class="fc-step-lbl" style="color:${aqiColor}">${shortLbl}</div>
-      <div class="fc-bar" style="background:${aqiColor};width:${Math.round(f.avg_aqi/maxAqi*100)}%"></div>
-    `;
-      btn.onclick = () => selectForecastStep(i);
-      timeline.appendChild(btn);
-    });
-  }
-  selectForecastStep(activeForecastStep);
-  drawForecastChart();
-}
-
-function selectForecastStep(idx) {
-  activeForecastStep = idx;
-  document.querySelectorAll('.fc-step').forEach((el, i) => el.classList.toggle('active', i === idx));
-  const f = FORECAST[idx];
-  document.getElementById('fc-map-label').innerHTML = idx === 0
-    ? '📍 <b>Current Status</b>'
-    : `⟳ Forecast <b>+${f.minutes} min</b> · AQI <b style="color:${f.color}">${f.avg_aqi}</b> · ${f.label}`;
-  updateHeatmap(f.heat);
-}
-
-function drawForecastChart() {
-  const canvas = document.getElementById('forecast-chart');
-  if (!canvas || !FORECAST.length) return;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.offsetWidth || 260, H = 80;
-  canvas.width = W; canvas.height = H;
-  const aqis = FORECAST.map(f => f.avg_aqi);
-  const maxV = Math.max(...aqis, 1), minV = Math.min(...aqis, 0);
-  const span = Math.max(maxV - minV, 1e-6);
-  const n = FORECAST.length;
-  const denom = Math.max(n - 1, 1);
-  const xAt = i => (i / denom) * W;
-  const yAt = aqi => H - ((aqi - minV) / span) * (H - 12) - 4;
-
-  ctx.clearRect(0, 0, W, H);
-  if (n === 1) {
-    ctx.font = '10px Space Mono,monospace';
-    ctx.fillStyle = '#3a5068';
-    ctx.textAlign = 'center';
-    ctx.fillText('AQI ' + aqis[0], W / 2, H / 2);
-    return;
-  }
-
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, 'rgba(0,212,255,.2)'); grad.addColorStop(1, 'rgba(0,212,255,0)');
-  ctx.beginPath();
-  FORECAST.forEach((f, i) => {
-    const x = xAt(i), y = yAt(f.avg_aqi);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
-  ctx.fillStyle = grad; ctx.fill();
-  FORECAST.forEach((f, i) => {
-    if (i === 0) return;
-    const prev = FORECAST[i - 1];
-    const x1 = xAt(i - 1), y1 = yAt(prev.avg_aqi);
-    const x2 = xAt(i), y2 = yAt(f.avg_aqi);
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-    ctx.strokeStyle = f.color; ctx.lineWidth = 2; ctx.stroke();
-  });
-  FORECAST.forEach((f, i) => {
-    const x = xAt(i), y = yAt(f.avg_aqi);
-    ctx.beginPath(); ctx.arc(x, y, i === activeForecastStep ? 4 : 2, 0, Math.PI * 2);
-    ctx.fillStyle = f.color; ctx.fill();
-  });
-  ctx.font = '8px Space Mono,monospace'; ctx.fillStyle = '#3a5068';
-  ctx.textAlign = 'left';  ctx.fillText('NOW', 2, H - 2);
-  ctx.textAlign = 'right'; ctx.fillText('+' + FORECAST[FORECAST.length - 1].minutes + 'm', W - 2, H - 2);
 }
 
 // ── ALERTS ──
@@ -1713,7 +1509,7 @@ function drawVsRealityChart() {
   canvas.width = W; canvas.height = H;
   ctx.clearRect(0, 0, W, H);
 
-  if (!VS_REALITY.length) {
+  if (!VS_REALITY.length || VS_REALITY.length < 2) {
     ctx.fillStyle = '#3a5068'; ctx.font = '10px Space Mono,monospace';
     ctx.textAlign = 'center';
     ctx.fillText('Collecting data (24h+)...', W/2, H/2);
@@ -1722,10 +1518,20 @@ function drawVsRealityChart() {
 
   const allVals = [...VS_REALITY.map(p=>p.pred_pm25), ...VS_REALITY.map(p=>p.real_pm25)];
   const maxV = Math.max(...allVals, 35) * 1.1, minV = 0;
+  const span = maxV - minV;
   const n    = VS_REALITY.length;
   const denom = Math.max(n - 1, 1);
   const xOf  = i => (i / denom) * (W-20) + 10;
-  const yOf  = v => H - 16 - ((v-minV)/(maxV-minV)) * (H-24);
+  const yOf  = v => span < 1e-6 ? H/2 : H - 16 - ((v-minV)/span) * (H-24);
+
+  // Check if all values are the same (flat line scenario)
+  const uniqueVals = new Set(allVals.map(v => Math.round(v)));
+  if (uniqueVals.size === 1) {
+    ctx.fillStyle = '#3a5068'; ctx.font = '10px Space Mono,monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Data collecting... Check back in 24h', W/2, H/2);
+    return;
+  }
 
   // Predicted line (dashed)
   ctx.beginPath();

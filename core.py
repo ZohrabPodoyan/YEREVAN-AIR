@@ -5,7 +5,6 @@ from fetcher import fetch_air_data, fetch_wind_data
 from physics import wind_displacement, step_particles, emit_particles, trim_particles
 from renderer import render
 from alerts import check_alerts
-from forecast import run_forecast
 from database import save_measurements, get_training_data, get_row_count
 from predictor import train, predict, save_prediction_for_eval, get_prediction_vs_reality
 from correlation import get_correlation_data
@@ -49,12 +48,6 @@ def run_cycle(particles: list) -> tuple[list, str]:
     server_alerts   = check_server_alerts()
     all_alerts      = new_alerts + server_alerts
     owm_fc = fetch_openwm_forecast(40)
-    hourly_wind = get_hourly_wind_series(config.FORECAST_STEPS, wind, owm_fc)
-    forecast_frames = run_forecast(
-        particles, df, wind,
-        prediction=prediction,
-        hourly_wind=hourly_wind,
-    )
 
     d_lat, d_lon = wind_displacement(wind["wind_speed"], wind["wind_deg"], config.DT)
     particles    = step_particles(particles, d_lat, d_lon)
@@ -78,7 +71,7 @@ def run_cycle(particles: list) -> tuple[list, str]:
 
     html = render(
         particles, df, wind,
-        all_alerts, forecast_frames,
+        all_alerts,
         prediction, vs_reality,
         correlation, ranking,
         weather_forecast, anomalies

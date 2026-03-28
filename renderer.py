@@ -106,7 +106,7 @@ def _build_ticker_html(sources: list, alerts: list) -> str:
     return "".join(items)
 
 
-def render(particles, df, wind, alerts=None, forecast_frames=None,
+def render(particles, df, wind, alerts=None,
            prediction=None, vs_reality=None, correlation=None,
            ranking=None, weather_forecast=None, anomalies=None) -> str:
     avg_pm25 = df["pm25"].mean()
@@ -117,22 +117,8 @@ def render(particles, df, wind, alerts=None, forecast_frames=None,
     heat_data = [[p["lat"], p["lon"], p["value"]] for p in particles]
     history_data = []
     alerts = alerts or []
-    forecast_frames = forecast_frames or []
     prediction = prediction or []
     vs_reality = vs_reality or []
-
-    forecast_js = [
-        {
-            "step":    f["step"],
-            "minutes": f["minutes"],
-            "hours":   f.get("hours", 0),
-            "avg_aqi": f["avg_aqi"],
-            "label":   f["label"],
-            "color":   f["color"],
-            "heat":    f["heat"],
-        }
-        for f in forecast_frames
-    ]
 
     stations = _prepare_stations(df)
     station_cards = _build_station_cards_html(stations)
@@ -140,12 +126,8 @@ def render(particles, df, wind, alerts=None, forecast_frames=None,
     ticker_items = _build_ticker_html(stations, alerts)
 
     template = env.get_template("base.html")
-    forecast_horizon_h = round(
-        config.FORECAST_STEPS * (config.DT / 3600.0), 1
-    )
 
     return template.render(
-        forecast_horizon_h = forecast_horizon_h,
         timestamp        = datetime.now().strftime("%H:%M:%S  %d.%m.%Y"),
         particle_count   = len(particles),
         station_count    = len(df),
@@ -171,7 +153,6 @@ def render(particles, df, wind, alerts=None, forecast_frames=None,
         sources_json     = json.dumps(stations),
         history_json     = json.dumps(history_data),
         alerts_json      = json.dumps(alerts),
-        forecast_json    = json.dumps(forecast_js),
         prediction_json  = json.dumps(prediction),
         vs_reality_json   = json.dumps(vs_reality),
         correlation_json  = json.dumps(correlation or {}),

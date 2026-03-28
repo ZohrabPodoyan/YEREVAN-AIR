@@ -109,31 +109,28 @@ def step_particles(particles: list, d_lat: float, d_lon: float, step_time: float
     return new
 
 
-def emit_particles(df, pm25_rel_jitter: float = 0.0, target_mean_pm25: float | None = None) -> list:
+
+def emit_particles(df, target_mean_pm25: float = None) -> list:
     """
     Adds new particles from each station.
+    If target_mean_pm25 is given, scales emissions so city mean matches it
+    (used by forecast to align with LSTM prediction).
     Particle value = AQI (0-500).
-    target_mean_pm25: if set, scale station PM2.5 so mean matches (forecast vs LSTM).
-    pm25_rel_jitter: if > 0 and no target, scale each PM2.5 by U(1-j, 1+j).
     """
     from aqi import pm25_to_aqi
     new = []
-    mean_pm = float(df["pm25"].mean()) if len(df) else 0.0
     for _, row in df.iterrows():
-        pm = float(row["pm25"])
-        if target_mean_pm25 is not None and mean_pm > 1e-6:
-            pm *= target_mean_pm25 / mean_pm
-        elif pm25_rel_jitter > 0:
-            pm *= float(np.random.uniform(1.0 - pm25_rel_jitter, 1.0 + pm25_rel_jitter))
-            pm = max(0.0, pm)
-        aqi, _, _ = pm25_to_aqi(pm)
+        pm25 = row["pm25"]
+        if target_mean_pm25 is not None and float(df["pm25"].mean()) > 0:
+            scale = target_mean_pm25 / float(df["pm25"].mean())
+            pm25  = max(0.0, pm25 * scale)
+        aqi, _, _ = pm25_to_aqi(pm25)
         new.append({
             "lat":   row["lat"],
             "lon":   row["lon"],
             "value": float(aqi),
         })
     return new
-
 
 def trim_particles(particles: list) -> list:
     """Keeps only MAX_PARTICLES strongest particles."""
