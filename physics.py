@@ -21,18 +21,24 @@ except ImportError:
 
 
 def wind_displacement(speed_ms: float, direction_deg: float, dt_sec: float) -> tuple:
-    """
-    Meteorological direction: 270° = wind FROM west → particles fly TO east.
-    Returns (d_lat, d_lon) in degrees.
-    """ 
-    dist_m   = speed_ms * dt_sec
-    move_rad = np.radians(90 -(direction_deg + 180.0))   # where particles fly
+    dist_m = speed_ms * dt_sec
     
-    # 111,320 meters is more precise for 1 degree of latitude
-    d_lat = dist_m * np.cos(move_rad) / 111320
-    d_lon = dist_m * np.sin(move_rad) / (111320 * np.cos(np.radians(config.LAT_CENTER)))
+    # 1. Flip the wind: From NE (60) becomes To SW (240)
+    # 2. Ensure it stays within 0-360
+    target_dir = (direction_deg + 180.0) % 360
+    
+    # 3. Convert to Radians
+    move_rad = np.radians(target_dir)
+    
+    # 4. Calculation (Assuming 0 is North and CW)
+    # North/South displacement
+    d_lat = (dist_m * np.cos(move_rad)) / 111320
+    
+    # East/West displacement (with longitude correction)
+    cos_lat = np.cos(np.radians(config.LAT_CENTER))
+    d_lon = (dist_m * np.sin(move_rad)) / (111320 * cos_lat)
+    
     return float(d_lat), float(d_lon)
-
 
 def get_terrain_factor(lat: float, lon: float) -> float:
     """
