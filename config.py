@@ -34,3 +34,6 @@ LSTM_MC_SAMPLES = max(3, min(50, int(os.getenv("LSTM_MC_SAMPLES", "12"))))
 
 # Rotate predictions eval log when larger than this (bytes)
 PREDICTIONS_LOG_MAX_BYTES = int(os.getenv("PREDICTIONS_LOG_MAX_BYTES", str(5 * 1024 * 1024)))
+
+# Forecast prediction weight (0.2 = 20% LSTM prediction, 80% current baseline)
+FORECAST_PREDICTION_WEIGHT = float(os.getenv("FORECAST_PREDICTION_WEIGHT", "0.2"))
