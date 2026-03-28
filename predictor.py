@@ -387,6 +387,32 @@ def predict(df_raw: pd.DataFrame, wind: dict) -> list[dict]:
     return results
 
 
+def pm25_at_hour(prediction: list, hour: float) -> float:
+    """
+    Interpolate city-mean PM2.5 at `hour` hours ahead from predict() horizons
+    (1h, 3h, 6h, 12h, 24h). Used by dispersion forecast to align emissions with LSTM.
+    """
+    if not prediction:
+        return 20.0
+    pts = sorted(
+        [(float(p["hours"]), float(p["pm25"])) for p in prediction],
+        key=lambda x: x[0],
+    )
+    if hour <= pts[0][0]:
+        return pts[0][1]
+    if hour >= pts[-1][0]:
+        return pts[-1][1]
+    for i in range(len(pts) - 1):
+        h0, pm0 = pts[i]
+        h1, pm1 = pts[i + 1]
+        if h0 <= hour <= h1:
+            if abs(h1 - h0) < 1e-6:
+                return pm0
+            t = (hour - h0) / (h1 - h0)
+            return pm0 + t * (pm1 - pm0)
+    return pts[-1][1]
+
+
 # ══════════════════════════════════════════════
 #  Сравнение prediction vs reality
 # ══════════════════════════════════════════════

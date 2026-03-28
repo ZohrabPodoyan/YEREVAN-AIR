@@ -10,7 +10,7 @@ from database import save_measurements, get_training_data, get_row_count
 from predictor import train, predict, save_prediction_for_eval, get_prediction_vs_reality
 from correlation import get_correlation_data
 from district_ranking import get_district_ranking
-from weather_forecast import get_weather_forecast
+from weather_forecast import fetch_openwm_forecast, get_weather_forecast, get_hourly_wind_series
 from anomaly import detect_anomalies
 from server_monitor import check_server_alerts
 from datetime import datetime
@@ -48,7 +48,13 @@ def run_cycle(particles: list) -> tuple[list, str]:
     new_alerts      = check_alerts(df)
     server_alerts   = check_server_alerts()
     all_alerts      = new_alerts + server_alerts
-    forecast_frames = run_forecast(particles, df, wind)
+    owm_fc = fetch_openwm_forecast(40)
+    hourly_wind = get_hourly_wind_series(config.FORECAST_STEPS, wind, owm_fc)
+    forecast_frames = run_forecast(
+        particles, df, wind,
+        prediction=prediction,
+        hourly_wind=hourly_wind,
+    )
 
     d_lat, d_lon = wind_displacement(wind["wind_speed"], wind["wind_deg"], config.DT)
     particles    = step_particles(particles, d_lat, d_lon)
@@ -67,7 +73,7 @@ def run_cycle(particles: list) -> tuple[list, str]:
     correlation = _last_correlation
     ranking = _last_ranking
 
-    weather_forecast = get_weather_forecast()
+    weather_forecast = get_weather_forecast(owm_fc)
     anomalies        = detect_anomalies(df, wind)
 
     html = render(
