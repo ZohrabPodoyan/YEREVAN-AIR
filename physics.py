@@ -26,7 +26,7 @@ def wind_displacement(speed_ms: float, direction_deg: float, dt_sec: float) -> t
     Returns (d_lat, d_lon) in degrees.
     """ 
     dist_m   = speed_ms * dt_sec
-    move_rad = np.radians(direction_deg + 180.0)   # where particles fly
+    move_rad = np.radians(90 -(direction_deg + 180.0))   # where particles fly
     
     # 111,320 meters is more precise for 1 degree of latitude
     d_lat = dist_m * np.cos(move_rad) / 111320

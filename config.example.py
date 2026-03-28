@@ -8,8 +8,8 @@ LON_CENTER  = 44.5133
 OUTPUT_FILE = "yerevan_air.html"
 
 DT            = 3600
-DECAY         = 0.94
-DIFFUSION     = 0.0008
+DECAY         = 0.85
+DIFFUSION     = 0.001
 MAX_PARTICLES = 800
 FORECAST_STEPS = 6
 ALERT_THRESHOLD = 100
