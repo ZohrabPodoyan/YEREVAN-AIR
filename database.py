@@ -26,6 +26,13 @@ def connect_db():
 
 
 def _connect():
+
+    parent_dir = DB_PATH.parent
+    if not parent_dir.exists():
+        parent_dir.mkdir(parents=True, exist_ok=True)
+        # На всякий случай даем права на запись
+        os.chmod(parent_dir, 0o777)
+    
     conn = sqlite3.connect(DB_PATH, timeout=30.0)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
