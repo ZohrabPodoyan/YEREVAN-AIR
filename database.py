@@ -15,7 +15,7 @@ import pandas as pd
 from datetime import datetime
 from pathlib import Path
 
-DB_PATH = Path(os.environ.get("DB_PATH", Path(__file__).parent / "air_data.csv"))
+DB_PATH = Path(os.environ.get("DB_PATH", Path(__file__).parent / "air_data.sqlite"))
 
 SQLITE_BUSY_RETRIES = 5
 
